@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import landscape from "@/assets/landscape.avif.asset.json";
-import logo from "@/assets/logo.png.asset.json";
+import landscape from "@/assets/landscape.avif";
+import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,8 +19,8 @@ export const Route = createFileRoute("/")({
 function Index() {
   return (
     <main className="construction-page">
-      <img className="construction-landscape" src={landscape.url} alt="" fetchPriority="high" />
-      <img className="construction-logo" src={logo.url} alt="Crearemind logo" />
+      <img className="construction-landscape" src={landscape} alt="" fetchPriority="high" />
+      <img className="construction-logo" src={logo} alt="Crearemind logo" />
       <h1 className="construction-title">crearemind.in</h1>
       <p className="construction-message">We're under construction. Please check back for an update soon.</p>
     </main>
