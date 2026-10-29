@@ -127,6 +127,33 @@ export function FeatureCards() {
     setActive(closestIndex);
   };
 
+  const isSwiping = useRef(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isSwiping.current = false;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    if (dx > 8) {
+      isSwiping.current = true;
+    }
+  };
+
+  const onTouchEnd = () => {
+    touchStartPos.current = null;
+  };
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (isSwiping.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
     <section id="feature-cards" className="bg-paper px-0 sm:px-5 pb-16 pt-6 text-ink sm:pb-24 sm:pt-10 md:px-10 md:pb-28">
       <div className="mx-auto max-w-[1560px]">
@@ -139,18 +166,22 @@ export function FeatureCards() {
         {/* Scrollable Cards Track - Smooth touch swipe on mobile, clean scroll on desktop */}
         <div
           ref={track}
-          data-lenis-prevent-horizontal="true"
           onScroll={handleScroll}
-          className="no-scrollbar flex snap-x snap-mandatory gap-3.5 sm:gap-6 overflow-x-auto px-[8vw] sm:px-0 py-2 sm:py-3 overscroll-x-auto sm:overscroll-x-contain"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          className="no-scrollbar flex snap-x snap-mandatory gap-3.5 sm:gap-6 overflow-x-auto px-[8vw] sm:px-0 py-2 sm:py-3"
           style={{
             WebkitOverflowScrolling: "touch",
-            touchAction: "pan-x pan-y",
+            overscrollBehaviorY: "auto",
+            overscrollBehaviorX: "contain",
           }}
         >
           {items.map((c) => (
             <Link
               to={c.link}
               key={c.t}
+              onClick={handleLinkClick}
               className="group w-[84vw] max-w-[340px] shrink-0 snap-center sm:snap-start sm:w-[46%] sm:max-w-none lg:w-[calc(25%-18px)] cursor-pointer"
             >
               <div className="relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden rounded-2xl md:rounded-[8px] bg-neutral-950 shadow-md transition-all duration-500 ease-expo group-hover:-translate-y-2 group-hover:shadow-2xl border border-black/10 group-hover:border-black/25 isolate">

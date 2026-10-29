@@ -353,8 +353,9 @@ export function FeatureTabs() {
     }, 700);
   };
 
-  // Autoplay functionality matching Squarespace controls - only runs when user is looking at this section and not interacting
+  // Autoplay functionality matching Squarespace controls - only runs when user is looking at this section on desktop
   useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) return;
     if (!isPlaying || isHovered || isTouching || !isVisible) return;
     const timer = setInterval(() => {
       toCard((active + 1) % items.length);
@@ -377,11 +378,10 @@ export function FeatureTabs() {
       {/* Squarespace Minimalist Clean Category Navigation */}
       <div className="sticky top-20 z-20 mt-8 sm:mt-10 flex justify-center px-4">
         <nav
-          data-lenis-prevent-horizontal="true"
           className="no-scrollbar flex max-w-full items-center gap-1 sm:gap-2 overflow-x-auto py-1"
           style={{
             WebkitOverflowScrolling: "touch",
-            touchAction: "pan-x pan-y",
+            overscrollBehaviorY: "auto",
           }}
         >
           {items.map((c, i) => {
@@ -414,7 +414,6 @@ export function FeatureTabs() {
       >
         <div
           ref={track}
-          data-lenis-prevent-horizontal="true"
           onScroll={onScroll}
           onTouchStart={(e) => {
             setIsTouching(true);
@@ -462,10 +461,11 @@ export function FeatureTabs() {
           onPointerLeave={(e) => {
             if (e.pointerType === "mouse") dragging.current = null;
           }}
-          className="no-scrollbar flex snap-x snap-mandatory gap-4 sm:gap-5 md:gap-7 overflow-x-auto px-[6vw] overscroll-x-contain py-4"
+          className="no-scrollbar flex snap-x snap-mandatory gap-4 sm:gap-5 md:gap-7 overflow-x-auto px-[8vw] md:px-[6vw] py-4"
           style={{
             WebkitOverflowScrolling: "touch",
-            touchAction: "pan-x pan-y",
+            overscrollBehaviorY: "auto",
+            overscrollBehaviorX: "contain",
           }}
         >
           {items.map((c, i) => {
@@ -482,7 +482,7 @@ export function FeatureTabs() {
                     open(c.page);
                   }
                 }}
-                className={`group cursor-pointer relative aspect-[16/10.2] min-h-[440px] sm:min-h-[500px] md:min-h-[540px] w-[86vw] sm:w-[76vw] shrink-0 snap-center overflow-hidden rounded-xl md:rounded-[8px] isolate transition-all duration-700 ease-expo md:w-[64vw] lg:w-[62vw] md:max-w-[960px] select-none opacity-100 ${
+                className={`group cursor-pointer relative aspect-[16/10.2] min-h-[440px] sm:min-h-[500px] md:min-h-[540px] w-[84vw] sm:w-[76vw] shrink-0 snap-center overflow-hidden rounded-xl md:rounded-[8px] isolate transition-all duration-700 ease-expo md:w-[64vw] lg:w-[62vw] md:max-w-[960px] select-none opacity-100 ${
                   isActive
                     ? "scale-100 shadow-[0_28px_60px_-15px_rgba(0,0,0,0.25)] ring-1 ring-ink/10"
                     : "scale-100 shadow-[0_16px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-2xl"
