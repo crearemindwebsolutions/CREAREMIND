@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, ArrowDown, ChevronDown, ExternalLink } from "lucide-react";
 import { lenisInstance } from "@/components/site/SmoothScroll";
+import { AdaptiveMedia } from "@/components/ui/adaptive-media";
 
 export interface TunnelItem {
   src: string;
@@ -164,7 +165,7 @@ function TunnelCard({ card, progress, pointer, total, stage, theme = "cream", on
           ? "shadow-2xl shadow-neutral-900/25 ring-1 ring-black/10 hover:ring-black/35 hover:shadow-neutral-900/40"
           : "shadow-2xl shadow-black/80 ring-1 ring-white/15 hover:ring-indigo-400/80 hover:shadow-indigo-500/30"
       } transition-all duration-500`}>
-        <img
+        <AdaptiveMedia
           src={card.item.src}
           alt={card.item.title}
           draggable={false}
