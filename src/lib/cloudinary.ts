@@ -406,6 +406,7 @@ export async function fetchUserMedia(userId?: string | null): Promise<MediaRecor
       !isLegacyBlacklisted(m.url) &&
       !isLegacyBlacklisted(m.public_id) &&
       m.resource_type !== "deleted" &&
+      m.resource_type !== "site_config" &&
       !m.public_id?.startsWith("DELETED:") &&
       !m.url?.startsWith("https://deleted.crearemind.com/");
 
@@ -491,3 +492,52 @@ export async function deleteMediaRecord(
     console.warn("Could not delete from Supabase media table:", err);
   }
 }
+
+/**
+ * Persist site content globally to Supabase cloud database so edits in /admin
+ * are immediately visible to all visitors and live on production domains.
+ */
+export async function syncSiteContentToCloud(content: any): Promise<boolean> {
+  try {
+    const serialized = JSON.stringify(content);
+    // Delete previous config rows
+    await publicSupabase.from("media").delete().eq("public_id", "GLOBAL_SITE_CONTENT_CONFIG_V1");
+    // Insert new global config row
+    const { error } = await publicSupabase.from("media").insert({
+      public_id: "GLOBAL_SITE_CONTENT_CONFIG_V1",
+      resource_type: "site_config",
+      url: serialized,
+      original_filename: `config_${Date.now()}`,
+    });
+    if (error) {
+      console.warn("Supabase site content sync error:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("Failed to sync site content to Supabase cloud:", err);
+    return false;
+  }
+}
+
+/**
+ * Fetch the latest globally published site content from Supabase database.
+ */
+export async function fetchSiteContentFromCloud(): Promise<any | null> {
+  try {
+    const { data, error } = await publicSupabase
+      .from("media")
+      .select("url, created_at")
+      .eq("public_id", "GLOBAL_SITE_CONTENT_CONFIG_V1")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (!error && data && data.length > 0 && data[0]?.url) {
+      return JSON.parse(data[0].url);
+    }
+  } catch (err) {
+    console.warn("Could not fetch global site content from Supabase cloud:", err);
+  }
+  return null;
+}
+

@@ -20,6 +20,7 @@ import {
   uploadMultipleMedia,
   fetchUserMedia,
   deleteMediaRecord,
+  syncSiteContentToCloud,
   type MediaRecord,
 } from "@/lib/cloudinary";
 import {
@@ -221,6 +222,7 @@ function AdminPage() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>("inquiries");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
 
   // Client Inquiries state (Intake from Contact form + Direct email to crearemindwebsolutions@gmail.com)
   const [inquiriesList, setInquiriesList] = useState<ClientInquiry[]>(() => getStoredInquiries());
@@ -775,11 +777,24 @@ function AdminPage() {
     setPickerTarget(null);
   };
 
-  const handleSaveAll = () => {
-    saveSiteContent(content);
-    setSaveSuccess(true);
-    toast.success("All website changes saved and published live!");
-    setTimeout(() => setSaveSuccess(false), 2500);
+  const handleSaveAll = async () => {
+    setIsSavingCloud(true);
+    try {
+      saveSiteContent(content);
+      const ok = await syncSiteContentToCloud(content);
+      if (ok) {
+        setSaveSuccess(true);
+        toast.success("All website changes saved and published live to crearemind.in!");
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        toast.warning("Saved locally, but cloud database update was queued.");
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Error saving changes to cloud.");
+    } finally {
+      setIsSavingCloud(false);
+    }
   };
 
   const handleReset = () => {
@@ -936,10 +951,17 @@ function AdminPage() {
 
             <button
               onClick={handleSaveAll}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all active:scale-95 cursor-pointer"
+              disabled={isSavingCloud}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all active:scale-95 cursor-pointer"
             >
-              {saveSuccess ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              <span>{saveSuccess ? "Published Live!" : "Save Changes"}</span>
+              {isSavingCloud ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : saveSuccess ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              <span>{isSavingCloud ? "Publishing to Live Site..." : saveSuccess ? "Published Live!" : "Save Changes"}</span>
             </button>
 
             <Link

@@ -17,7 +17,12 @@ import tplDashboard from "@/assets/templates/tpl-ecom-dashboard.jpg";
 import tplEditorial from "@/assets/templates/tpl-editorial.jpg";
 import tplDesignSystem from "@/assets/templates/tpl-ui-system.jpg";
 
-import { getDeletedMediaKeys, fetchUserMedia } from "./cloudinary";
+import {
+  getDeletedMediaKeys,
+  fetchUserMedia,
+  syncSiteContentToCloud,
+  fetchSiteContentFromCloud,
+} from "./cloudinary";
 
 /**
  * Verified active hero background videos loaded from Cloudinary database.
@@ -223,50 +228,46 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     videos: DATABASE_HERO_VIDEOS,
     cards: [
       {
-        id: "card-botanica",
-        name: "Botanica",
-        title: "Botanica",
-        subtitle: "Floral Showcase & Editorial Shop",
-        image: tplBeauty,
+        id: "card-vintage-tee",
+        name: "Vintage Graphic Tee Showcase",
+        title: "Vintage Graphic Tee",
+        subtitle: "Streetwear Editorial Apparel",
+        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205843/zr4hg3h2hcrphavqc0i2.jpg",
       },
       {
-        id: "card-barber",
-        name: "Borough Barber",
-        title: "Borough Barber",
-        subtitle: "Precision Grooming & Editorial Stills",
-        image: tplFashion,
-        image2: tplCreative,
-        image3: tplPos,
+        id: "card-silk-sarees",
+        name: "Silk Sarees Heritage",
+        title: "Silk Sarees Heritage",
+        subtitle: "Traditional Luxury Weaves",
+        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205854/ou6cb09gesi6j4c73mvu.jpg",
       },
       {
-        id: "card-balance",
-        name: "Balance",
-        title: "Balance",
-        subtitle: "(WELLNESS CENTER)",
-        image: tplArch,
+        id: "card-green-saree",
+        name: "Green Silk Saree",
+        title: "Green Silk Saree",
+        subtitle: "Artisan Handloom Collection",
+        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205858/if3twjqxjdnczmkuqjuv.jpg",
       },
       {
-        id: "card-academic",
-        name: "Academic Lessons",
-        title: "Academic Lessons",
-        subtitle: "Scott Smith Tutoring",
-        image: tplEditorial,
+        id: "card-chanderi-saree",
+        name: "Chanderi Silk Saree",
+        title: "Chanderi Silk Saree",
+        subtitle: "Heritage Royal Drape",
+        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205861/kspcjbmwaxgfeocyrtd1.jpg",
       },
       {
-        id: "card-lio",
-        name: "Lio Agency",
-        title: "LIO AGENCY",
-        subtitle: "High-contrast Studio Portfolio",
-        image: tplAgency,
-        image2: tplSaas,
-        image3: tplSneakers,
+        id: "card-striped-shirt",
+        name: "Modern Striped Shirt",
+        title: "Modern Striped Shirt",
+        subtitle: "Contemporary Menswear",
+        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205864/ext18jxebvtokuiebvcw.jpg",
       },
       {
-        id: "card-agency",
-        name: "Agency",
-        title: "AGENCY",
-        subtitle: "Cinematic Fullscreen Hero Banner",
-        image: tplAgency,
+        id: "card-luxury-watch",
+        name: "Chronos Titanium Watch",
+        title: "Chronos Titanium Watch",
+        subtitle: "Luxury Swiss Horology",
+        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793204760/l6udoyphlwtmot00ngyr.jpg",
       },
     ],
   },
@@ -784,36 +785,146 @@ export function getSavedSiteContent(): SiteContent {
 /**
  * Save site content to storage and notify all listening components.
  */
+/**
+ * Save site content to storage and notify all listening components.
+ * Immediately pushes to Supabase database so live domains like crearemind.in
+ * and all visiting users receive the updated photos and content.
+ */
 export function saveSiteContent(content: SiteContent): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: content }));
+    syncSiteContentToCloud(content).catch((err) => {
+      console.warn("Could not sync site content to Supabase cloud:", err);
+    });
   } catch (err) {
     console.error("Failed to save site content:", err);
   }
 }
 
 /**
- * Reset site content back to defaults.
+ * Reset site content back to defaults and publish to cloud.
  */
 export function resetSiteContent(): SiteContent {
   if (typeof window !== "undefined") {
     localStorage.removeItem(STORAGE_KEY);
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: DEFAULT_SITE_CONTENT }));
+    syncSiteContentToCloud(DEFAULT_SITE_CONTENT).catch(console.warn);
   }
   return DEFAULT_SITE_CONTENT;
 }
 
 /**
  * React hook to read and observe dynamic site content.
+ * Automatically synchronizes with Supabase database for live cloud updates across all domains.
  */
 export function useSiteContent() {
   const [content, setContent] = useState<SiteContent>(getSavedSiteContent);
 
   useEffect(() => {
-    // Initial sync
+    // Initial sync from local storage
     setContent(getSavedSiteContent());
+
+    // Fetch and sync globally published site content from Supabase cloud
+    fetchSiteContentFromCloud()
+      .then((cloudContent) => {
+        if (cloudContent && typeof cloudContent === "object" && Object.keys(cloudContent).length > 2) {
+          setContent((prev) => {
+            const merged: SiteContent = {
+              ...DEFAULT_SITE_CONTENT,
+              ...prev,
+              ...cloudContent,
+              branding: {
+                ...DEFAULT_SITE_CONTENT.branding,
+                ...(prev.branding || {}),
+                ...(cloudContent.branding || {}),
+              },
+              hero: {
+                ...DEFAULT_SITE_CONTENT.hero,
+                ...(prev.hero || {}),
+                ...(cloudContent.hero || {}),
+                cards:
+                  cloudContent.hero?.cards?.length
+                    ? cloudContent.hero.cards
+                    : prev.hero?.cards?.length
+                    ? prev.hero.cards
+                    : DEFAULT_SITE_CONTENT.hero.cards,
+              },
+              services: {
+                ...DEFAULT_SITE_CONTENT.services,
+                ...(prev.services || {}),
+                ...(cloudContent.services || {}),
+                items:
+                  cloudContent.services?.items?.length
+                    ? cloudContent.services.items
+                    : prev.services?.items?.length
+                    ? prev.services.items
+                    : DEFAULT_SITE_CONTENT.services.items,
+              },
+              templates: {
+                ...DEFAULT_SITE_CONTENT.templates,
+                ...(prev.templates || {}),
+                ...(cloudContent.templates || {}),
+                items:
+                  cloudContent.templates?.items?.length
+                    ? cloudContent.templates.items
+                    : prev.templates?.items?.length
+                    ? prev.templates.items
+                    : DEFAULT_SITE_CONTENT.templates.items,
+              },
+              featureCards: {
+                ...DEFAULT_SITE_CONTENT.featureCards,
+                ...(prev.featureCards || {}),
+                ...(cloudContent.featureCards || {}),
+                items:
+                  cloudContent.featureCards?.items?.length
+                    ? cloudContent.featureCards.items
+                    : prev.featureCards?.items?.length
+                    ? prev.featureCards.items
+                    : DEFAULT_SITE_CONTENT.featureCards.items,
+              },
+              featureTabs: {
+                ...DEFAULT_SITE_CONTENT.featureTabs,
+                ...(prev.featureTabs || {}),
+                ...(cloudContent.featureTabs || {}),
+                items:
+                  cloudContent.featureTabs?.items?.length
+                    ? cloudContent.featureTabs.items
+                    : prev.featureTabs?.items?.length
+                    ? prev.featureTabs.items
+                    : DEFAULT_SITE_CONTENT.featureTabs.items,
+              },
+              streamImages: {
+                ...DEFAULT_SITE_CONTENT.streamImages,
+                ...(prev.streamImages || {}),
+                ...(cloudContent.streamImages || {}),
+                items:
+                  cloudContent.streamImages?.items?.length
+                    ? cloudContent.streamImages.items
+                    : prev.streamImages?.items?.length
+                    ? prev.streamImages.items
+                    : DEFAULT_SITE_CONTENT.streamImages.items,
+              },
+            };
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+              } catch {}
+            }
+            return merged;
+          });
+        } else {
+          // If cloud has no full config yet, check if local has customizations and push them to cloud
+          const local = getSavedSiteContent();
+          if (local && typeof local === "object") {
+            syncSiteContentToCloud(local).catch(console.warn);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch global cloud content on mount:", err);
+      });
 
     // Automatically sync active media from Supabase database and purge deleted media
     fetchUserMedia()
