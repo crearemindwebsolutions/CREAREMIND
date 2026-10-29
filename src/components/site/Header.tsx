@@ -467,7 +467,7 @@ export function Header() {
           </div>
 
           {/* Right: Log In / Profile & Get Started */}
-          <div className="flex items-center justify-end gap-3 sm:gap-4">
+          <div className="flex items-center justify-end gap-2.5 sm:gap-4">
             {!user ? (
               <Link
                 to="/auth"
@@ -481,27 +481,27 @@ export function Header() {
             ) : (
               <Link
                 to="/profile"
-                className={`group relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-all duration-300 hover:border-white hover:bg-white hover:text-black focus:outline-none ${
-                  feature ? "opacity-0 pointer-events-none" : ""
+                className={`group relative flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-white/30 bg-white/10 text-white transition-all duration-300 hover:border-white hover:bg-white hover:text-black focus:outline-none ${
+                  feature || mobile ? "hidden sm:flex" : ""
                 }`}
                 aria-label="View Account Profile"
                 title="Account Profile"
               >
-                <User className="h-5 w-5 transition-transform group-hover:scale-110" />
+                <User className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:scale-110" />
               </Link>
             )}
 
             <Link
               to="/contact"
-              className={`rounded-none bg-white px-4 py-2 sm:px-5 sm:py-2.5 text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.06em] text-black transition-all hover:bg-neutral-200 shadow-sm ${
-                feature ? "opacity-0 pointer-events-none" : ""
+              className={`hidden sm:inline-flex items-center justify-center rounded-none bg-white px-4 py-2 sm:px-5 sm:py-2.5 text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.06em] text-black transition-all hover:bg-neutral-200 shadow-sm ${
+                feature || mobile ? "opacity-0 pointer-events-none" : ""
               }`}
             >
               Get Started
             </Link>
 
             <button
-              className="text-white lg:hidden"
+              className="text-white lg:hidden p-2 -mr-2 rounded-lg hover:bg-white/10 transition-colors focus:outline-none cursor-pointer"
               aria-label={mobile ? "Close menu" : "Open menu"}
               onClick={() => setMobile(!mobile)}
             >
