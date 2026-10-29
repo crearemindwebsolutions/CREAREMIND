@@ -82,8 +82,13 @@ export function FeatureCards() {
     const container = track.current;
     if (container && container.children[n]) {
       const targetChild = container.children[n] as HTMLElement;
+      const isMobile = window.innerWidth < 640;
+      const targetLeft = isMobile
+        ? targetChild.offsetLeft - (container.clientWidth - targetChild.offsetWidth) / 2
+        : targetChild.offsetLeft - container.offsetLeft;
+
       container.scrollTo({
-        left: targetChild.offsetLeft - container.offsetLeft,
+        left: targetLeft,
         behavior: "smooth",
       });
       setActive(n);
@@ -93,26 +98,39 @@ export function FeatureCards() {
   const handleScroll = () => {
     const el = track.current;
     if (!el || !el.children.length) return;
-    const scrollLeft = el.scrollLeft;
+    const isMobile = window.innerWidth < 640;
     let closestIndex = 0;
     let minDistance = Infinity;
 
-    Array.from(el.children).forEach((child, idx) => {
-      const childLeft = (child as HTMLElement).offsetLeft - el.offsetLeft;
-      const distance = Math.abs(childLeft - scrollLeft);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = idx;
-      }
-    });
+    if (isMobile) {
+      const center = el.scrollLeft + el.clientWidth / 2;
+      Array.from(el.children).forEach((child, idx) => {
+        const childCenter = (child as HTMLElement).offsetLeft + (child as HTMLElement).offsetWidth / 2;
+        const distance = Math.abs(childCenter - center);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = idx;
+        }
+      });
+    } else {
+      const scrollLeft = el.scrollLeft;
+      Array.from(el.children).forEach((child, idx) => {
+        const childLeft = (child as HTMLElement).offsetLeft - el.offsetLeft;
+        const distance = Math.abs(childLeft - scrollLeft);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = idx;
+        }
+      });
+    }
 
     setActive(closestIndex);
   };
 
   return (
-    <section id="feature-cards" className="bg-paper px-4 pb-16 pt-6 text-ink sm:px-5 sm:pb-24 sm:pt-10 md:px-10 md:pb-28">
+    <section id="feature-cards" className="bg-paper px-0 sm:px-5 pb-16 pt-6 text-ink sm:pb-24 sm:pt-10 md:px-10 md:pb-28">
       <div className="mx-auto max-w-[1560px]">
-        <div className="mb-6 sm:mb-10 md:mb-14">
+        <div className="px-4 sm:px-0 mb-6 sm:mb-10 md:mb-14">
           <h2 className="max-w-3xl text-2xl font-medium leading-[1.18] tracking-tight sm:text-3xl md:text-[42px]">
             {heading}
           </h2>
@@ -121,9 +139,9 @@ export function FeatureCards() {
         {/* Scrollable Cards Track - Smooth touch swipe on mobile, clean scroll on desktop */}
         <div
           ref={track}
-          data-lenis-prevent="true"
+          data-lenis-prevent-horizontal="true"
           onScroll={handleScroll}
-          className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-4 py-2 sm:-mx-5 sm:gap-6 sm:px-5 sm:py-3 md:mx-0 md:px-0 overscroll-x-contain scroll-smooth"
+          className="no-scrollbar flex snap-x snap-mandatory gap-3.5 sm:gap-6 overflow-x-auto px-[8vw] sm:px-0 py-2 sm:py-3 overscroll-x-auto sm:overscroll-x-contain"
           style={{
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-x pan-y",
@@ -133,17 +151,17 @@ export function FeatureCards() {
             <Link
               to={c.link}
               key={c.t}
-              className="group w-[82vw] max-w-[320px] shrink-0 snap-start sm:w-[46%] sm:max-w-none lg:w-[calc(25%-18px)] cursor-pointer"
+              className="group w-[84vw] max-w-[340px] shrink-0 snap-center sm:snap-start sm:w-[46%] sm:max-w-none lg:w-[calc(25%-18px)] cursor-pointer"
             >
-              <div className="relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden rounded-xl md:rounded-[8px] bg-neutral-950 shadow-md transition-all duration-500 ease-expo group-hover:-translate-y-2 group-hover:shadow-2xl border border-black/10 group-hover:border-black/25 isolate">
+              <div className="relative aspect-[4/5] sm:aspect-[3/4] overflow-hidden rounded-2xl md:rounded-[8px] bg-neutral-950 shadow-md transition-all duration-500 ease-expo group-hover:-translate-y-2 group-hover:shadow-2xl border border-black/10 group-hover:border-black/25 isolate">
                 <CardMedia poster={c.img} alt={c.t} />
                 
                 {/* Mobile top gradient for title legibility */}
                 <div className="md:hidden absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 via-black/35 to-transparent z-1 pointer-events-none" />
 
                 {/* Text: Title always visible; Paragraph hidden on mobile, visible on laptop/desktop */}
-                <div className="relative z-10 p-4 sm:p-5 md:p-5">
-                  <h3 className="font-['Plus_Jakarta_Sans',Inter,-apple-system,sans-serif] text-[16px] sm:text-[16px] md:text-[17px] font-semibold tracking-[-0.015em] text-white leading-snug drop-shadow-sm md:drop-shadow-none">
+                <div className="relative z-10 p-5 sm:p-5 md:p-5">
+                  <h3 className="font-['Plus_Jakarta_Sans',Inter,-apple-system,sans-serif] text-[17px] sm:text-[16px] md:text-[17px] font-semibold tracking-[-0.015em] text-white leading-snug drop-shadow-sm md:drop-shadow-none">
                     {c.t}
                   </h3>
                   {/* Paragraph shown only on laptop/desktop (md+), hidden on mobile */}
@@ -162,7 +180,7 @@ export function FeatureCards() {
         </div>
 
         {/* Carousel Dots & Controls */}
-        <div className="relative mt-6 sm:mt-10 flex items-center justify-between md:justify-center">
+        <div className="px-4 sm:px-0 relative mt-6 sm:mt-10 flex items-center justify-between md:justify-center">
           <div className="flex items-center gap-1.5">
             {items.map((c, i) => (
               <button

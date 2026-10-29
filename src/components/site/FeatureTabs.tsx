@@ -377,7 +377,7 @@ export function FeatureTabs() {
       {/* Squarespace Minimalist Clean Category Navigation */}
       <div className="sticky top-20 z-20 mt-8 sm:mt-10 flex justify-center px-4">
         <nav
-          data-lenis-prevent="true"
+          data-lenis-prevent-horizontal="true"
           className="no-scrollbar flex max-w-full items-center gap-1 sm:gap-2 overflow-x-auto py-1"
           style={{
             WebkitOverflowScrolling: "touch",
@@ -414,7 +414,7 @@ export function FeatureTabs() {
       >
         <div
           ref={track}
-          data-lenis-prevent="true"
+          data-lenis-prevent-horizontal="true"
           onScroll={onScroll}
           onTouchStart={(e) => {
             setIsTouching(true);
