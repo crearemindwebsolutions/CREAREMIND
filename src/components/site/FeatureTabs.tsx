@@ -263,8 +263,11 @@ export function FeatureTabs() {
   const [active, setActive] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [isTouching, setIsTouching] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const dragging = useRef<{ x: number; s: number } | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchMoved = useRef(false);
   const isProgrammatic = useRef(false);
   const snapT = useRef<number | undefined>(undefined);
   const moved = useRef(false);
@@ -300,6 +303,14 @@ export function FeatureTabs() {
     });
     if (best !== active) {
       setActive(best);
+      const tabEl = tabRefs.current[best];
+      const navEl = tabEl?.parentElement;
+      if (navEl && tabEl) {
+        navEl.scrollTo({
+          left: tabEl.offsetLeft - (navEl.clientWidth - tabEl.offsetWidth) / 2,
+          behavior: "smooth",
+        });
+      }
     }
   };
 
@@ -342,14 +353,14 @@ export function FeatureTabs() {
     }, 700);
   };
 
-  // Autoplay functionality matching Squarespace controls - only runs when user is looking at this section
+  // Autoplay functionality matching Squarespace controls - only runs when user is looking at this section and not interacting
   useEffect(() => {
-    if (!isPlaying || isHovered || !isVisible) return;
+    if (!isPlaying || isHovered || isTouching || !isVisible) return;
     const timer = setInterval(() => {
       toCard((active + 1) % items.length);
     }, 5500);
     return () => clearInterval(timer);
-  }, [isPlaying, isHovered, isVisible, active, items.length]);
+  }, [isPlaying, isHovered, isTouching, isVisible, active, items.length]);
 
   return (
     <section ref={sectionRef} className="relative bg-paper text-ink py-20 md:py-28 overflow-hidden">
@@ -365,7 +376,14 @@ export function FeatureTabs() {
 
       {/* Squarespace Minimalist Clean Category Navigation */}
       <div className="sticky top-20 z-20 mt-8 sm:mt-10 flex justify-center px-4">
-        <nav className="no-scrollbar flex max-w-full items-center gap-1 sm:gap-2 overflow-x-auto py-1">
+        <nav
+          data-lenis-prevent="true"
+          className="no-scrollbar flex max-w-full items-center gap-1 sm:gap-2 overflow-x-auto py-1"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-x pan-y",
+          }}
+        >
           {items.map((c, i) => {
             const isTabActive = active === i;
             return (
@@ -396,29 +414,59 @@ export function FeatureTabs() {
       >
         <div
           ref={track}
+          data-lenis-prevent="true"
           onScroll={onScroll}
+          onTouchStart={(e) => {
+            setIsTouching(true);
+            touchStartX.current = e.touches[0]?.clientX ?? null;
+            touchMoved.current = false;
+          }}
+          onTouchMove={(e) => {
+            if (
+              touchStartX.current !== null &&
+              e.touches[0] &&
+              Math.abs(e.touches[0].clientX - touchStartX.current) > 8
+            ) {
+              touchMoved.current = true;
+            }
+          }}
+          onTouchEnd={() => {
+            setIsTouching(false);
+            touchStartX.current = null;
+          }}
+          onTouchCancel={() => {
+            setIsTouching(false);
+            touchStartX.current = null;
+          }}
           onPointerDown={(e) => {
+            if (e.pointerType !== "mouse") return;
             isProgrammatic.current = false;
-            if (e.pointerType === "mouse") moved.current = false;
+            moved.current = false;
             dragging.current = { x: e.clientX, s: track.current!.scrollLeft };
           }}
           onPointerMove={(e) => {
-            if (dragging.current && Math.abs(e.clientX - dragging.current.x) > 6)
+            if (e.pointerType !== "mouse" || !dragging.current) return;
+            if (Math.abs(e.clientX - dragging.current.x) > 6)
               moved.current = true;
-            if (dragging.current && moved.current)
+            if (moved.current)
               track.current!.scrollLeft =
                 dragging.current.s - (e.clientX - dragging.current.x);
           }}
-          onPointerUp={() => {
+          onPointerUp={(e) => {
+            if (e.pointerType !== "mouse") return;
             if (dragging.current) {
               dragging.current = null;
               if (moved.current) onScroll();
             }
           }}
-          onPointerLeave={() => {
-            dragging.current = null;
+          onPointerLeave={(e) => {
+            if (e.pointerType === "mouse") dragging.current = null;
           }}
-          className="no-scrollbar flex snap-x snap-mandatory gap-5 overflow-x-auto px-[6vw] md:gap-7 overscroll-x-contain touch-pan-y py-4"
+          className="no-scrollbar flex snap-x snap-mandatory gap-4 sm:gap-5 md:gap-7 overflow-x-auto px-[6vw] overscroll-x-contain py-4"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-x pan-y",
+          }}
         >
           {items.map((c, i) => {
             const isActive = active === i;
@@ -427,14 +475,14 @@ export function FeatureTabs() {
               <article
                 key={c.tab}
                 onClick={() => {
-                  if (moved.current) return;
+                  if (moved.current || touchMoved.current) return;
                   if (!isActive) {
                     toCard(i);
                   } else {
                     open(c.page);
                   }
                 }}
-                className={`group cursor-pointer relative aspect-[16/10.2] min-h-[460px] sm:min-h-[500px] md:min-h-[540px] w-[86vw] sm:w-[76vw] shrink-0 snap-center overflow-hidden rounded-[8px] isolate transition-all duration-700 ease-expo md:w-[64vw] lg:w-[62vw] md:max-w-[960px] select-none opacity-100 ${
+                className={`group cursor-pointer relative aspect-[16/10.2] min-h-[440px] sm:min-h-[500px] md:min-h-[540px] w-[86vw] sm:w-[76vw] shrink-0 snap-center overflow-hidden rounded-xl md:rounded-[8px] isolate transition-all duration-700 ease-expo md:w-[64vw] lg:w-[62vw] md:max-w-[960px] select-none opacity-100 ${
                   isActive
                     ? "scale-100 shadow-[0_28px_60px_-15px_rgba(0,0,0,0.25)] ring-1 ring-ink/10"
                     : "scale-100 shadow-[0_16px_40px_-15px_rgba(0,0,0,0.2)] hover:shadow-2xl"
@@ -454,23 +502,24 @@ export function FeatureTabs() {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/20 to-black/60 pointer-events-none rounded-[inherit]" />
 
                 {/* Top-Left Editorial Serif Headline & Subtitle */}
-                <div className="relative z-10 p-7 sm:p-9 md:p-11 pointer-events-none">
+                <div className="relative z-10 p-6 sm:p-9 md:p-11 pointer-events-none">
                   <h3
                     style={{
                       fontVariationSettings: "'opsz' 72",
-                      fontSize: "clamp(26px, 2.6vw, 34px)",
+                      fontSize: "clamp(24px, 2.6vw, 34px)",
                       lineHeight: 1.16,
                     }}
                     className="font-serif text-2xl sm:text-3xl md:text-[34px] font-normal tracking-tight text-white leading-tight opacity-100 block"
                   >
                     {c.serifTitle}
                   </h3>
+                  {/* Paragraph hidden on mobile, visible on laptop/desktop */}
                   <p
                     style={{
                       fontSize: "clamp(13px, 1.05vw, 14.5px)",
                       lineHeight: 1.5,
                     }}
-                    className="mt-2.5 max-w-[340px] sm:max-w-[380px] text-xs sm:text-[13px] md:text-sm font-normal text-white/90 leading-relaxed font-sans opacity-90"
+                    className="hidden md:block mt-2.5 max-w-[340px] sm:max-w-[380px] text-xs sm:text-[13px] md:text-sm font-normal text-white/90 leading-relaxed font-sans opacity-90"
                   >
                     {c.subtitle}
                   </p>
