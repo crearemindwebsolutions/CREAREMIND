@@ -170,19 +170,6 @@ function TunnelCard({ card, progress, pointer, total, stage, theme = "cream", on
           draggable={false}
           className="h-full w-full object-cover rounded-[inherit] transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        <div className="absolute inset-0 rounded-[inherit] bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3.5 sm:p-5">
-          {card.item.category && (
-            <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 drop-shadow-sm mb-1 line-clamp-1">
-              {card.item.category}
-            </span>
-          )}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs sm:text-sm font-medium tracking-tight text-white drop-shadow-md line-clamp-1">
-              {card.item.title}
-            </span>
-            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          </div>
-        </div>
       </div>
     </motion.div>
   );
