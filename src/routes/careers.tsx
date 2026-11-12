@@ -1,22 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/careers")({
   head: () => ({
     meta: [
-      { title: "Careers & Opportunities — Under Development | Creare Mind" },
+      { title: "Careers & Opportunities — Creare Mind" },
       {
         name: "description",
         content:
-          "Careers & Opportunities Under Development — Creare Mind. We are preparing to roll out both full-time professional positions and paid, hands-on student internships.",
+          "Careers & Internship Opportunities at Creare Mind (crearemind.in). Discover upcoming engineering roles, UI/UX design positions, and student internships.",
       },
       {
+        name: "keywords",
+        content:
+          "Creare Mind careers, software engineering jobs, tech internships, React developer jobs, Creare Mind hiring",
+      },
+      { property: "og:site_name", content: "Creare Mind" },
+      {
         property: "og:title",
-        content: "Careers & Opportunities — Under Development | Creare Mind",
+        content: "Careers & Opportunities — Creare Mind",
       },
       {
         property: "og:description",
-        content: "Careers & Opportunities Under Development — Creare Mind.",
+        content: "Careers & Opportunities at Creare Mind. Engineering positions and hands-on student internships.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/careers` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/careers` },
     ],
   }),
   component: CareersUnderDevelopmentPage,

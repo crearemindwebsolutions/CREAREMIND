@@ -28,16 +28,23 @@ import {
 } from "lucide-react";
 import WavyBackground from "@/components/ui/blue-meshy-background";
 import { submitContactInquiry } from "@/lib/inquiries";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact Us & Start a Project — Creare Mind" },
+      { title: "Contact Us & Start a Project — Creare Mind | crearemind.in" },
       {
         name: "description",
         content:
-          "Discuss your next software project with Creare Mind. Direct phone line +91 80727 19603, instant WhatsApp desk, or request a free 30-min architectural callback.",
+          "Connect with Creare Mind (crearemind.in). Call +91 80727 19603, message on WhatsApp, or email crearemindwebsolutions@gmail.com for custom software, mobile apps, and billing POS systems.",
       },
+      {
+        name: "keywords",
+        content:
+          "Contact Creare Mind, Creare Mind phone number, hire software engineers, WhatsApp Creare Mind, software agency contact India",
+      },
+      { property: "og:site_name", content: "Creare Mind" },
       { property: "og:title", content: "Contact Us & Start a Project — Creare Mind" },
       {
         property: "og:description",
@@ -45,7 +52,18 @@ export const Route = createFileRoute("/contact")({
           "Engineering leadership desk for custom software, mobile apps, shop billing POS counters, and digital automation. Rapid 15-minute response.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/contact` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Contact Us — Creare Mind" },
+      {
+        name: "twitter:description",
+        content: "Call +91 80727 19603 or request a callback to discuss your software project.",
+      },
+      { name: "twitter:image", content: DEFAULT_OG_IMAGE },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/contact` },
     ],
   }),
   component: ContactPage,

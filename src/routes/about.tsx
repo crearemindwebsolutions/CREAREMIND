@@ -23,24 +23,42 @@ import { GetStartedLink } from "@/components/site/GetStartedLink";
 
 import founderGowthaman from "@/assets/team/founder-gowthaman.png";
 import cofounderDheepan from "@/assets/team/cofounder-dheepan-raj.jpg";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About Us — Creare Mind | Founders, Leadership & Engineering Studio" },
+      { title: "About Us — Creare Mind | Founders & Engineering Studio" },
       {
         name: "description",
         content:
-          "Meet the founders and team behind Creare Mind. Discover our mission, engineering philosophy, and the software solutions we build for ambitious businesses worldwide.",
+          "Meet the founders and team behind Creare Mind (crearemind.in) — Gowthaman & Dheepan Raj. High-velocity software development, mobile apps, shop billing POS, and creative media.",
       },
-      { property: "og:title", content: "About Us — Creare Mind" },
+      {
+        name: "keywords",
+        content:
+          "About Creare Mind, Creare Mind founders, Gowthaman, Dheepan Raj, software engineering studio India, crearemind team",
+      },
+      { property: "og:site_name", content: "Creare Mind" },
+      { property: "og:title", content: "About Us — Creare Mind Leadership & Engineering" },
       {
         property: "og:description",
         content:
-          "Meet the founders and team behind Creare Mind. High-velocity software development, mobile apps, shop billing POS, and creative media.",
+          "Meet the founders and engineering studio behind Creare Mind. High-velocity software development, mobile apps, shop billing POS, and creative media.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/about` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "About Us — Creare Mind" },
+      {
+        name: "twitter:description",
+        content: "Discover the vision, founders, and engineering philosophy behind Creare Mind.",
+      },
+      { name: "twitter:image", content: DEFAULT_OG_IMAGE },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/about` },
     ],
   }),
   component: AboutPage,

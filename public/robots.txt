@@ -1,8 +1,25 @@
+# Robots.txt for Creare Mind (https://crearemind.in)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /auth
+Disallow: /auth/
+
+# Dedicated search bot rules
 User-agent: Googlebot
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /auth
+Disallow: /auth/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /auth
+Disallow: /auth/
 
 User-agent: Twitterbot
 Allow: /
@@ -10,5 +27,5 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
-Allow: /
+# Sitemap Index
+Sitemap: https://crearemind.in/sitemap.xml

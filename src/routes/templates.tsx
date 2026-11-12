@@ -20,16 +20,23 @@ import tplMobileApp from "@/assets/templates/tpl-ecom-mobile.jpg";
 import tplAudio from "@/assets/templates/tpl-ecom-audio.jpg";
 import tplFurniture from "@/assets/templates/tpl-ecom-furniture.jpg";
 import tplDesignSystem from "@/assets/tpl-2.jpg";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/templates")({
   head: () => ({
     meta: [
-      { title: "Our Work & Deliverables — Creare Mind" },
+      { title: "Our Work & Deliverables — Creare Mind | Portfolio" },
       {
         name: "description",
         content:
-          "Explore custom websites, mobile apps, shop billing systems, and creative media built by Creare Mind.",
+          "Explore custom websites, mobile apps, shop billing systems, and creative media built by Creare Mind (crearemind.in).",
       },
+      {
+        name: "keywords",
+        content:
+          "Creare Mind portfolio, website templates, ecommerce showcase, billing app demo, client projects Creare Mind",
+      },
+      { property: "og:site_name", content: "Creare Mind" },
       { property: "og:title", content: "Our Work & Deliverables — Creare Mind" },
       {
         property: "og:description",
@@ -37,7 +44,18 @@ export const Route = createFileRoute("/templates")({
           "Explore custom websites, mobile apps, shop billing systems, and creative media built by Creare Mind.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/templates` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Our Work & Deliverables — Creare Mind" },
+      {
+        name: "twitter:description",
+        content: "Explore custom websites, mobile apps, shop billing systems, and creative media.",
+      },
+      { name: "twitter:image", content: DEFAULT_OG_IMAGE },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/templates` },
     ],
   }),
   component: TemplatesPage,

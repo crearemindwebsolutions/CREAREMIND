@@ -19,6 +19,7 @@ import { CurrencyProvider } from "../hooks/use-currency";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "../components/ui/sonner";
 import { SitePreloader } from "../components/site/SitePreloader";
+import { SCHEMA_ORGANIZATION, SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -85,10 +86,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Creare Mind" },
-      { name: "description", content: "Software development, mobile apps, shop billing systems, video editing & social media management by Creare Mind." },
+      { title: "Creare Mind — Software Development & Digital Agency | crearemind.in" },
+      {
+        name: "description",
+        content:
+          "Creare Mind (crearemind.in) builds custom websites, mobile apps, shop billing POS systems, video editing & social media management for ambitious businesses.",
+      },
+      {
+        name: "keywords",
+        content:
+          "Creare Mind, crearemind, crearemind.in, Creare Mind Technologies, software company India, custom software development, mobile apps iOS Android, shop billing POS software, retail billing machine, video editing reels, social media management",
+      },
+      { name: "author", content: "Creare Mind" },
+      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
+      { property: "og:site_name", content: "Creare Mind" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@crearemind" },
+      { name: "theme-color", content: "#07080a" },
     ],
     links: [
+      { rel: "canonical", href: SITE_URL },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -113,6 +133,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="dark" style={{ backgroundColor: "#07080a" }}>
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(SCHEMA_ORGANIZATION),
+          }}
+        />
         <style
           dangerouslySetInnerHTML={{
             __html: `

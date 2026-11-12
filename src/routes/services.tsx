@@ -29,24 +29,42 @@ import tplSaas from "@/assets/templates/tpl-saas.jpg";
 import { AdaptiveMedia } from "@/components/ui/adaptive-media";
 import WavyBackground from "@/components/ui/blue-meshy-background";
 import { useSiteContent } from "@/lib/site-content";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
     meta: [
-      { title: "Our Services — Software, Mobile Apps & Digital Agency | Creare Mind" },
+      { title: "Our Services — Software, Mobile Apps & Billing Systems | Creare Mind" },
       {
         name: "description",
         content:
-          "Explore Creare Mind's full suite of services: custom web development, mobile apps, shop billing POS systems, video editing, and dedicated social media management.",
+          "Explore Creare Mind's engineering services: custom web platforms, native mobile apps, shop billing POS counters, video editing, and dedicated social media management.",
       },
-      { property: "og:title", content: "Our Services — Creare Mind Digital Agency" },
+      {
+        name: "keywords",
+        content:
+          "Creare Mind services, web development services, mobile app development, shop billing software, POS counter setup, video reels editing, social media management India",
+      },
+      { property: "og:site_name", content: "Creare Mind" },
+      { property: "og:title", content: "Our Services — Software & Digital Agency | Creare Mind" },
       {
         property: "og:description",
         content:
-          "Custom web development, iOS & Android mobile apps, shop billing systems, video editing, and social media growth for ambitious businesses.",
+          "Custom web development, iOS & Android mobile apps, shop billing systems, video editing, and social media growth by Creare Mind.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/services` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Our Services — Creare Mind" },
+      {
+        name: "twitter:description",
+        content: "Custom software, mobile applications, shop billing POS counters, and digital media.",
+      },
+      { name: "twitter:image", content: DEFAULT_OG_IMAGE },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/services` },
     ],
   }),
   component: ServicesPage,

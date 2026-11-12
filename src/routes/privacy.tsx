@@ -1,12 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — Creare Mind" },
+      { title: "Privacy Policy — Creare Mind | crearemind.in" },
       { name: "description", content: "Read the Privacy Policy of Creare Mind. Learn how we collect, use, and protect your personal information and media." },
+      { property: "og:site_name", content: "Creare Mind" },
       { property: "og:title", content: "Privacy Policy — Creare Mind" },
       { property: "og:description", content: "Learn how Creare Mind collects, uses, and safeguards your personal data." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/privacy` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/privacy` },
     ],
   }),
   component: PrivacyPage,

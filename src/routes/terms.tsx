@@ -1,12 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms of Service — Creare Mind" },
+      { title: "Terms of Service — Creare Mind | crearemind.in" },
       { name: "description", content: "Read the Terms of Service for Creare Mind. Understand the rules, rights, and responsibilities governing use of our website building services." },
+      { property: "og:site_name", content: "Creare Mind" },
       { property: "og:title", content: "Terms of Service — Creare Mind" },
       { property: "og:description", content: "Read the Terms of Service for Creare Mind website building platform." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE_URL}/terms` },
+      { property: "og:image", content: DEFAULT_OG_IMAGE },
+    ],
+    links: [
+      { rel: "canonical", href: `${SITE_URL}/terms` },
     ],
   }),
   component: TermsPage,
