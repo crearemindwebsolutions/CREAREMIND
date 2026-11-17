@@ -24,6 +24,7 @@ import { GetStartedLink } from "@/components/site/GetStartedLink";
 import founderGowthaman from "@/assets/team/founder-gowthaman.png";
 import cofounderDheepan from "@/assets/team/cofounder-dheepan-raj.jpg";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -62,6 +63,7 @@ export const Route = createFileRoute("/about")({
     ],
   }),
   component: AboutPage,
+  pendingComponent: PageSkeleton,
 });
 
 interface Founder {

@@ -29,6 +29,7 @@ import {
 import WavyBackground from "@/components/ui/blue-meshy-background";
 import { submitContactInquiry } from "@/lib/inquiries";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -67,6 +68,7 @@ export const Route = createFileRoute("/contact")({
     ],
   }),
   component: ContactPage,
+  pendingComponent: PageSkeleton,
 });
 
 const SERVICES = [

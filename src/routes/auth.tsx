@@ -2,12 +2,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { syncSessionUserToCloud, saveUserToCloud, getUserRoleAsync } from "@/lib/admin-users";
+import { format8DigitUserId } from "@/lib/user-id";
 import { ClipboardPaste, Eye, EyeOff, Check } from "lucide-react";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 interface PasswordRules {
   minLength: boolean;
@@ -132,6 +135,7 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   component: AuthPage,
+  pendingComponent: PageSkeleton,
 });
 
 function AuthPage() {
@@ -157,7 +161,44 @@ function AuthPage() {
   const newPasswordScore = getStrengthScore(newPasswordRules);
   const isNewPasswordValid = isPasswordStrong(newPasswordRules);
 
-  useEffect(() => { if (user) navigate({ to: redirect, replace: true }); }, [user, redirect, navigate]);
+  useEffect(() => {
+    if (user && user.email) {
+      let isMounted = true;
+      (async () => {
+        try {
+          // Guaranteed to persist user record to cloud database before navigating
+          await syncSessionUserToCloud(user);
+        } catch (e) {
+          console.warn("Session cloud sync error:", e);
+        }
+
+        const role = await getUserRoleAsync(user.email!);
+        if (!isMounted) return;
+
+        const p = sessionStorage.getItem("postAuth");
+        sessionStorage.removeItem("postAuth");
+        const targetDest = (redirect && redirect !== "/" && redirect !== "/profile" && redirect !== "/services" && redirect !== "/auth")
+          ? redirect
+          : (p && p !== "/" && p !== "/profile" && p !== "/services" && p !== "/auth")
+          ? p
+          : null;
+
+        if (targetDest) {
+          navigate({ to: safePath(targetDest), replace: true });
+        } else if (role === "Intern") {
+          navigate({ to: "/intern", replace: true });
+        } else if (role === "Super Admin" || role === "Admin") {
+          navigate({ to: "/admin", replace: true });
+        } else {
+          navigate({ to: "/profile", replace: true });
+        }
+      })();
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [user, redirect, navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,22 +221,62 @@ function AuthPage() {
       if (error) {
         setMsg({ ok: false, t: error.message });
       } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-        // User is already registered in Supabase!
+        // User is already registered in Supabase! Immediately sync to cloud directory
+        if (data.user) {
+          syncSessionUserToCloud(data.user, name).catch(() => {});
+        }
         setMsg({
           ok: false,
           t: "This email is already registered. Please sign in with your password.",
         });
         setMode("in");
-      } else if (!data.session) {
-        setMode("otp");
-        setMsg({ ok: true, t: "We've sent a 6-digit verification code to your email." });
+      } else {
+        if (data.user) {
+          syncSessionUserToCloud(data.user, name).catch(() => {});
+        }
+        if (!data.session) {
+          setMode("otp");
+          setMsg({ ok: true, t: "We've sent a 6-digit verification code to your email." });
+        }
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
-      if (error) setMsg({ ok: false, t: error.message });
+      if (error) {
+        if (error.message?.toLowerCase().includes("email not confirmed")) {
+          // Sync existing unconfirmed account into directory preserving any appointed role
+          getUserRoleAsync(email.trim().toLowerCase()).then((existingRole) => {
+            saveUserToCloud({
+              id: format8DigitUserId(email.trim().toLowerCase()),
+              name: email.trim().toLowerCase().split("@")[0],
+              email: email.trim().toLowerCase(),
+              phone: "—",
+              provider: "Email / Password",
+              role: existingRole || "Customer",
+              joinedDate: new Date().toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              }),
+            }).catch(() => {});
+          });
+          setMsg({
+            ok: false,
+            t: "Your email has not been verified yet. Please complete verification or sign up first.",
+          });
+        } else if (error.message?.toLowerCase().includes("invalid login credentials")) {
+          setMsg({
+            ok: false,
+            t: "No account found or invalid password. If you haven't signed up yet, please click 'Create an account' below or use Google Sign-in.",
+          });
+        } else {
+          setMsg({ ok: false, t: error.message });
+        }
+      } else if (data.user) {
+        syncSessionUserToCloud(data.user).catch(() => {});
+      }
     }
     setBusy(false);
   };
@@ -219,6 +300,9 @@ function AuthPage() {
     if (error) {
       setMsg({ ok: false, t: error.message });
     } else if (data.session || data.user) {
+      if (data.user) {
+        syncSessionUserToCloud(data.user, name).catch(() => {});
+      }
       setMsg({ ok: true, t: "Verified! Signing you in…" });
       navigate({ to: redirect, replace: true });
     }
@@ -315,11 +399,6 @@ function AuthPage() {
     });
     if (error) setMsg({ ok: false, t: error.message ?? "Google sign-in failed" });
   };
-
-  useEffect(() => {
-    const p = sessionStorage.getItem("postAuth");
-    if (user && p) { sessionStorage.removeItem("postAuth"); navigate({ to: safePath(p), replace: true }); }
-  }, [user, navigate]);
 
   useEffect(() => {
     if (import.meta.env.DEV && typeof window !== "undefined") {

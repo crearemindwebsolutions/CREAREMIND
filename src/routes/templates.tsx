@@ -21,6 +21,7 @@ import tplAudio from "@/assets/templates/tpl-ecom-audio.jpg";
 import tplFurniture from "@/assets/templates/tpl-ecom-furniture.jpg";
 import tplDesignSystem from "@/assets/tpl-2.jpg";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/templates")({
   head: () => ({
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/templates")({
     ],
   }),
   component: TemplatesPage,
+  pendingComponent: PageSkeleton,
 });
 
 const TEMPLATE_CATEGORIES = [

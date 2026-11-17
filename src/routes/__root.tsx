@@ -19,7 +19,20 @@ import { CurrencyProvider } from "../hooks/use-currency";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "../components/ui/sonner";
 import { SitePreloader } from "../components/site/SitePreloader";
+import { RootPendingSkeleton } from "../components/ui/SiteSkeletons";
 import { SCHEMA_ORGANIZATION, SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
+import { useSession } from "../hooks/use-session";
+import { syncSessionUserToCloud } from "../lib/admin-users";
+
+function GlobalUserSessionSync() {
+  const { user } = useSession();
+  useEffect(() => {
+    if (user?.email) {
+      syncSessionUserToCloud(user).catch(() => {});
+    }
+  }, [user]);
+  return null;
+}
 
 function NotFoundComponent() {
   return (
@@ -50,15 +63,26 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorStack = error instanceof Error ? error.stack : undefined;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <div className="max-w-2xl w-full text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+
+        {errorMessage && (
+          <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-left overflow-auto max-h-60 text-xs font-mono text-red-600 dark:text-red-400">
+            <p className="font-bold">{errorMessage}</p>
+            {errorStack && <pre className="mt-2 text-[10px] text-muted-foreground whitespace-pre-wrap">{errorStack}</pre>}
+          </div>
+        )}
+
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -124,6 +148,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  pendingComponent: RootPendingSkeleton,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
@@ -174,14 +199,33 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/";
   const isAdminRoute = pathname.startsWith("/admin");
+  const isInternRoute = pathname.startsWith("/intern");
+  const isStandaloneApp = isAdminRoute || isInternRoute;
+
+  // Manage light vs dark theme for standalone portals (Admin & Intern Dashboard in Creare Mind #F8F7F4)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (isStandaloneApp) {
+      document.documentElement.classList.remove("dark");
+      document.documentElement.style.setProperty("background-color", "#F8F7F4", "important");
+      document.body.style.setProperty("background-color", "#F8F7F4", "important");
+      document.body.style.setProperty("color", "#111111", "important");
+    } else {
+      document.documentElement.classList.add("dark");
+      document.documentElement.style.setProperty("background-color", "#07080a", "important");
+      document.body.style.setProperty("background-color", "#07080a", "important");
+      document.body.style.setProperty("color", "#ffffff", "important");
+    }
+  }, [isStandaloneApp]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <CurrencyProvider>
-        {!isAdminRoute && <SitePreloader />}
-        {/* Smooth scroll and site header are disabled on admin console */}
-        {!isAdminRoute && <SmoothScroll />}
-        {!isAdminRoute && <Header />}
+        <GlobalUserSessionSync />
+        {!isStandaloneApp && <SitePreloader />}
+        {/* Smooth scroll and site header are disabled on admin and intern portals */}
+        {!isStandaloneApp && <SmoothScroll />}
+        {!isStandaloneApp && <Header />}
         <Outlet />
         {isHome && <Footer />}
         <Toaster position="top-center" richColors closeButton />

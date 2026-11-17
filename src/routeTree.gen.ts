@@ -16,6 +16,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as InternRouteImport } from './routes/intern'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -57,6 +58,11 @@ const CareersRoute = CareersRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternRoute = InternRouteImport.update({
+  id: '/intern',
+  path: '/intern',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MediaRoute = MediaRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
+  '/intern': typeof InternRoute
   '/media': typeof MediaRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
+  '/intern': typeof InternRoute
   '/media': typeof MediaRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
+  '/intern': typeof InternRoute
   '/media': typeof MediaRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/careers'
     | '/contact'
+    | '/intern'
     | '/media'
     | '/pricing'
     | '/privacy'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/careers'
     | '/contact'
+    | '/intern'
     | '/media'
     | '/pricing'
     | '/privacy'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/careers'
     | '/contact'
+    | '/intern'
     | '/media'
     | '/pricing'
     | '/privacy'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
+  InternRoute: typeof InternRoute
   MediaRoute: typeof MediaRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intern': {
+      id: '/intern'
+      path: '/intern'
+      fullPath: '/intern'
+      preLoaderRoute: typeof InternRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/media': {
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
+  InternRoute: InternRoute,
   MediaRoute: MediaRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,

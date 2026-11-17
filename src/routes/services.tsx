@@ -30,6 +30,7 @@ import { AdaptiveMedia } from "@/components/ui/adaptive-media";
 import WavyBackground from "@/components/ui/blue-meshy-background";
 import { useSiteContent } from "@/lib/site-content";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
@@ -68,6 +69,7 @@ export const Route = createFileRoute("/services")({
     ],
   }),
   component: ServicesPage,
+  pendingComponent: PageSkeleton,
 });
 
 interface ServiceItem {

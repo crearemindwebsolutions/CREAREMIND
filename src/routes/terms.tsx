@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/terms")({
     ],
   }),
   component: TermsPage,
+  pendingComponent: PageSkeleton,
 });
 
 function TermsPage() {

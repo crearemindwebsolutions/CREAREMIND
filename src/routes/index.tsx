@@ -7,6 +7,7 @@ import { GetStarted } from "@/components/site/GetStarted";
 import { ImageStreamSection } from "@/components/site/ImageStreamSection";
 import { Cta } from "@/components/site/Cta";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { HomeSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: Index,
+  pendingComponent: HomeSkeleton,
 });
 
 function Index() {

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/careers")({
   head: () => ({
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/careers")({
     ],
   }),
   component: CareersUnderDevelopmentPage,
+  pendingComponent: PageSkeleton,
 });
 
 export function CareersUnderDevelopmentPage() {
@@ -64,6 +66,16 @@ export function CareersUnderDevelopmentPage() {
             <strong className="font-semibold text-neutral-900">paid, hands-on student internships</strong> with
             direct mentorship from our core engineering and leadership team.
           </p>
+
+          <div className="pt-6">
+            <a
+              href="/intern"
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition-colors"
+            >
+              <span>Existing Intern? Access Intern Dashboard</span>
+              <span>&rarr;</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>

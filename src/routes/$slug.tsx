@@ -4,11 +4,13 @@ import { getPage, tagline, IMAGES, PAGES, type PageEntry } from "@/components/si
 import { PageHero, Split, FeatureGrid, ClosingCta } from "@/components/site/PageBlocks";
 import { NavLink } from "@/components/site/NavLink";
 import { TEMPLATES } from "@/components/site/templates-data";
+import { PageSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/$slug")({
   loader: () => {
     throw redirect({ to: "/contact" });
   },
+  pendingComponent: PageSkeleton,
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [{ title: "Not found — Creare Mind" }, { name: "robots", content: "noindex" }] };
     const t = `${loaderData.page.name} — Creare Mind`;

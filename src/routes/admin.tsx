@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/hooks/use-session";
+import { supabase } from "@/integrations/supabase/client";
+import { supabasePublic } from "@/lib/supabase-public";
 import { isAdmin, PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
 import { format8DigitUserId } from "@/lib/user-id";
 import {
@@ -70,15 +72,54 @@ import {
   LogOut,
   X,
   Workflow,
+  TrendingUp,
+  Receipt,
+  Briefcase,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   getStoredInquiries,
   saveInquiriesList,
   exportInquiriesToCsv,
+  fetchInquiriesFromCloud,
+  updateInquiryInCloud,
+  deleteInquiryFromCloud,
   ADMIN_NOTIFICATION_EMAIL,
   type ClientInquiry,
 } from "@/lib/inquiries";
+import {
+  getStoredProjects,
+  saveProjectsList,
+  fetchProjectsFromCloud,
+  type AdminProject,
+} from "@/lib/admin-projects";
+import {
+  getStoredInvoices,
+  saveInvoicesList,
+  fetchInvoicesFromCloud,
+  type AdminInvoice,
+} from "@/lib/admin-invoices";
+import {
+  type ManagedUser,
+  DEFAULT_MANAGED_USERS,
+  getStoredUsers,
+  saveUsersToLocalStorage,
+  fetchUsersFromCloud,
+  saveUserToCloud,
+  deleteUserFromCloud,
+  generateUnique8DigitId,
+  exportUsersToCsv,
+  sanitizeAndDedupeUsers,
+} from "@/lib/admin-users";
+import { recordAdminLog } from "@/lib/admin-logs";
+import { AdminAnalyticsView } from "@/components/admin/AdminAnalyticsView";
+import { AdminProjectsView } from "@/components/admin/AdminProjectsView";
+import { AdminInvoicesView } from "@/components/admin/AdminInvoicesView";
+import { AdminCommsView } from "@/components/admin/AdminCommsView";
+import { AdminSeoView } from "@/components/admin/AdminSeoView";
+import { AdminLogsView } from "@/components/admin/AdminLogsView";
+import { AdminSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -88,130 +129,65 @@ export const Route = createFileRoute("/admin")({
     ],
   }),
   component: AdminPage,
+  pendingComponent: AdminSkeleton,
+  errorComponent: ({ error, reset }) => {
+    return (
+      <div className="min-h-screen bg-[#F8F7F4] text-neutral-900 grid place-items-center p-6">
+        <div className="max-w-md w-full rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl text-center">
+          <div className="mx-auto w-12 h-12 rounded-xl bg-red-50 text-red-600 grid place-items-center mb-4 border border-red-200">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-neutral-900">Admin Console Notice</h2>
+          <p className="text-xs text-neutral-500 mt-1">
+            An issue occurred while loading administrative records.
+          </p>
+          <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-left text-xs font-mono text-red-600 overflow-auto max-h-40">
+            {error instanceof Error ? error.message : String(error)}
+          </div>
+          <div className="mt-5 flex gap-2 justify-center">
+            <button
+              onClick={() => {
+                localStorage.removeItem("creare_admin_users_list");
+                localStorage.removeItem("creare_admin_projects");
+                localStorage.removeItem("creare_admin_invoices");
+                localStorage.removeItem("creare_client_inquiries");
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors"
+            >
+              Reset Cache &amp; Reload
+            </button>
+            <button
+              onClick={() => reset()}
+              className="px-4 py-2 border border-neutral-200 bg-white text-neutral-700 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  },
 });
 
-
-export interface ManagedUser {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  provider: "Google OAuth" | "Email / Password" | "Phone OTP" | "GitHub";
-  role: "Super Admin" | "Admin" | "Customer";
-  joinedDate: string;
-  company?: string;
-}
-
-export function generate8DigitIdFromString(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const abs = Math.abs(hash);
-  const num = 10000000 + (abs % 90000000);
-  return String(num);
-}
-
-export function generateUnique8DigitId(existingList: ManagedUser[]): string {
-  const existing = new Set(existingList.map((u) => u.id));
-  let id = "";
-  let attempts = 0;
-  do {
-    const num = Math.floor(10000000 + Math.random() * 90000000);
-    id = String(num);
-    attempts++;
-  } while (existing.has(id) && attempts < 1000);
-  return id;
-}
-
-const DUMMY_EMAILS = new Set([
-  "sarah.jenkins@quickcartpos.com",
-  "liam.vance@aetherstudio.design",
-  "elena@luminuxeskincare.com",
-  "m.rossi@verveoptics.it",
-]);
-
-export function sanitizeAndDedupeUsers(list: ManagedUser[]): ManagedUser[] {
-  const seenEmails = new Set<string>();
-  const seenIds = new Set<string>();
-  const cleaned: ManagedUser[] = [];
-
-  // Hardcoded numbers to purge so only real user-provided phone numbers show
-  const HARDCODED_PHONES = new Set([
-    "+91 80727 19603",
-    "+91 94421 88302",
-    "+1 (415) 892-4102",
-    "+44 20 7946 0912",
-    "+1 (212) 555-0198",
-    "+39 02 8945 1200",
-  ]);
-
-  for (const u of list) {
-    if (!u || !u.email) continue;
-    const emailKey = u.email.trim().toLowerCase();
-    if (DUMMY_EMAILS.has(emailKey)) continue;
-    if (seenEmails.has(emailKey)) continue;
-    seenEmails.add(emailKey);
-
-    let currentId = String(u.id || "").trim();
-    if (!/^\d{8}$/.test(currentId) || seenIds.has(currentId)) {
-      if (emailKey === "gowthamandharshan4@gmail.com") {
-        currentId = "80721960";
-      } else if (emailKey === "crearemindwebsolutions@gmail.com") {
-        currentId = "94421883";
-      } else {
-        do {
-          currentId = String(Math.floor(10000000 + Math.random() * 90000000));
-        } while (seenIds.has(currentId));
-      }
-    }
-    seenIds.add(currentId);
-
-    // If phone was hardcoded or placeholder, reset to empty string unless legitimately provided
-    let cleanPhone = (u.phone || "").trim();
-    if (HARDCODED_PHONES.has(cleanPhone)) {
-      cleanPhone = "";
-    }
-
-    cleaned.push({
-      ...u,
-      id: currentId,
-      phone: cleanPhone,
-    });
-  }
-
-  if (cleaned.length === 0) {
-    return DEFAULT_MANAGED_USERS;
-  }
-
-  return cleaned;
-}
-
-const DEFAULT_MANAGED_USERS: ManagedUser[] = [
-  {
-    id: "80721960",
-    name: "Gowthaman PR",
-    email: "gowthamandharshan4@gmail.com",
-    phone: "",
-    provider: "Google OAuth",
-    role: "Super Admin",
-    joinedDate: "15 Oct 2026",
-    company: "Creare Mind Founder",
-  },
-  {
-    id: "94421883",
-    name: "Dheepan Raj",
-    email: "crearemindwebsolutions@gmail.com",
-    phone: "",
-    provider: "Email / Password",
-    role: "Admin",
-    joinedDate: "16 Oct 2026",
-    company: "Creare Mind Co-Founder",
-  },
-];
-
-type AdminTab = "inquiries" | "users" | "media" | "heroCards" | "services" | "stream" | "featureCards" | "featureTabs" | "templates" | "hero" | "branding";
+type AdminTab =
+  | "analytics"
+  | "inquiries"
+  | "projects"
+  | "invoices"
+  | "comms"
+  | "seo"
+  | "users"
+  | "logs"
+  | "media"
+  | "heroCards"
+  | "services"
+  | "stream"
+  | "featureCards"
+  | "featureTabs"
+  | "templates"
+  | "hero"
+  | "branding";
 
 function AdminPage() {
   const { user, ready } = useSession();
@@ -220,17 +196,35 @@ function AdminPage() {
 
   const { content, updateContent, updateSection, resetToDefaults } = useSiteContent();
 
-  const [activeTab, setActiveTab] = useState<AdminTab>("inquiries");
+  const [activeTab, setActiveTab] = useState<AdminTab>("analytics");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSavingCloud, setIsSavingCloud] = useState(false);
 
   // Client Inquiries state (Intake from Contact form + Direct email to crearemindwebsolutions@gmail.com)
   const [inquiriesList, setInquiriesList] = useState<ClientInquiry[]>(() => getStoredInquiries());
+  const [projectsList, setProjectsList] = useState<AdminProject[]>(() => getStoredProjects());
+  const [invoicesList, setInvoicesList] = useState<AdminInvoice[]>(() => getStoredInvoices());
   const [inquirySearch, setInquirySearch] = useState("");
   const [inquiryStatusFilter, setInquiryStatusFilter] = useState<"All" | ClientInquiry["status"]>("All");
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
   const [copiedInquiryId, setCopiedInquiryId] = useState<string | null>(null);
+
+  // Enforce pure light theme inside admin panel without dark mode
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.backgroundColor = "#F8F7F4";
+    document.body.style.backgroundColor = "#F8F7F4";
+    document.body.style.color = "#111111";
+
+    return () => {
+      document.documentElement.classList.add("dark");
+      document.documentElement.style.backgroundColor = "#07080a";
+      document.body.style.backgroundColor = "#07080a";
+      document.body.style.color = "#ffffff";
+    };
+  }, []);
 
   // Real-time synchronization for inquiries
   useEffect(() => {
@@ -244,6 +238,119 @@ function AdminPage() {
       window.removeEventListener("storage", handleUpdate);
     };
   }, []);
+
+  const [isRefreshingUsers, setIsRefreshingUsers] = useState(false);
+  const [isRefreshingInquiries, setIsRefreshingInquiries] = useState(false);
+
+  // Live Realtime Subscriptions & Background Cloud Sync
+  useEffect(() => {
+    // 1. Initial Cloud Sync
+    fetchUsersFromCloud().then((u) => setUsersList(u)).catch(() => {});
+    fetchInquiriesFromCloud().then((i) => setInquiriesList(i)).catch(() => {});
+    fetchProjectsFromCloud().then((p) => setProjectsList(p)).catch(() => {});
+    fetchInvoicesFromCloud().then((inv) => setInvoicesList(inv)).catch(() => {});
+
+    // 2. Realtime WebSocket listener on public.media table
+    const realtimeChannel = supabasePublic
+      .channel("admin_realtime_sync_channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "media" },
+        (payload) => {
+          const record = payload.new as any;
+          if (!record) return;
+
+          // When a user signs in, registers, or updates account
+          if (record.resource_type === "user_account" && record.url) {
+            try {
+              const parsed = JSON.parse(record.url);
+              if (parsed && parsed.email) {
+                if (parsed.isDeleted || parsed.role === "Deleted") {
+                  setUsersList((prev) => prev.filter((u) => u.email.toLowerCase() !== parsed.email.toLowerCase()));
+                } else if (parsed.name && parsed.role) {
+                  setUsersList((prev) => sanitizeAndDedupeUsers([parsed, ...prev]));
+                  toast.info(`Live User Synced: ${parsed.name} (${parsed.role})`);
+                }
+              }
+            } catch {}
+          }
+
+          // When a client submits an inquiry
+          if (record.resource_type === "client_inquiry" && record.url) {
+            try {
+              const parsed = JSON.parse(record.url);
+              if (parsed && parsed.id) {
+                setInquiriesList((prev) => [parsed, ...prev.filter((q) => q.id !== parsed.id)]);
+                toast.info(`New Client Inquiry: #${parsed.id} (${parsed.name})`);
+              }
+            } catch {}
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. Cross-Tab Broadcast Channel (Instant zero-latency sync across all open tabs/windows)
+    let broadcastChannel: BroadcastChannel | null = null;
+    try {
+      broadcastChannel = new BroadcastChannel("creare_admin_channel");
+      broadcastChannel.onmessage = (event) => {
+        if (event.data?.type === "users_updated" && Array.isArray(event.data.users)) {
+          setUsersList(event.data.users);
+        }
+      };
+    } catch {}
+
+    // 4. Background re-sync timer every 15 seconds + on window focus
+    const syncInterval = setInterval(() => {
+      fetchUsersFromCloud().then((u) => setUsersList(u)).catch(() => {});
+    }, 15000);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        fetchUsersFromCloud().then((u) => setUsersList(u)).catch(() => {});
+      }
+    };
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    // 5. Local custom window events
+    const handleUsersUpdate = () => {
+      setUsersList(getStoredUsers());
+    };
+    const handleProjectsUpdate = () => {
+      setProjectsList(getStoredProjects());
+    };
+    const handleInvoicesUpdate = () => {
+      setInvoicesList(getStoredInvoices());
+    };
+    window.addEventListener("creare_users_updated", handleUsersUpdate);
+    window.addEventListener("creare_projects_updated", handleProjectsUpdate);
+    window.addEventListener("creare_invoices_updated", handleInvoicesUpdate);
+
+    return () => {
+      supabasePublic.removeChannel(realtimeChannel);
+      if (broadcastChannel) broadcastChannel.close();
+      clearInterval(syncInterval);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      window.removeEventListener("creare_users_updated", handleUsersUpdate);
+      window.removeEventListener("creare_projects_updated", handleProjectsUpdate);
+      window.removeEventListener("creare_invoices_updated", handleInvoicesUpdate);
+    };
+  }, []);
+
+  const handleRefreshInquiries = async () => {
+    setIsRefreshingInquiries(true);
+    try {
+      const liveInqs = await fetchInquiriesFromCloud();
+      setInquiriesList(liveInqs);
+      toast.success(`Client inquiries refreshed (${liveInqs.length} total)`);
+    } catch {
+      toast.error("Failed to sync inquiries from cloud");
+    } finally {
+      setIsRefreshingInquiries(false);
+    }
+  };
 
   // Self-heal services if web-dev or canonical services are missing from loaded state
   useEffect(() => {
@@ -269,27 +376,39 @@ function AdminPage() {
     }
   }, [content.services?.items, updateSection]);
 
-  const handleUpdateInquiryStatus = (id: string, newStatus: ClientInquiry["status"]) => {
-    const updated = inquiriesList.map((q) => (q.id === id ? { ...q, status: newStatus } : q));
+  const handleUpdateInquiryStatus = async (id: string, newStatus: ClientInquiry["status"]) => {
+    const target = inquiriesList.find((q) => q.id === id);
+    if (!target) return;
+    const updatedInquiry = { ...target, status: newStatus };
+    const updated = inquiriesList.map((q) => (q.id === id ? updatedInquiry : q));
     setInquiriesList(updated);
     saveInquiriesList(updated);
+    updateInquiryInCloud(updatedInquiry).catch(() => {});
+    recordAdminLog(user?.email || "admin@crearemind.in", "Updated Status", "Inquiries", `Inquiry #${id} marked as "${newStatus}"`);
     toast.success(`Inquiry #${id} marked as "${newStatus}"`);
   };
 
-  const handleSaveInquiryNotes = (id: string) => {
-    const updated = inquiriesList.map((q) => (q.id === id ? { ...q, notes: notesDraft } : q));
+  const handleSaveInquiryNotes = async (id: string) => {
+    const target = inquiriesList.find((q) => q.id === id);
+    if (!target) return;
+    const updatedInquiry = { ...target, notes: notesDraft };
+    const updated = inquiriesList.map((q) => (q.id === id ? updatedInquiry : q));
     setInquiriesList(updated);
     saveInquiriesList(updated);
+    updateInquiryInCloud(updatedInquiry).catch(() => {});
+    recordAdminLog(user?.email || "admin@crearemind.in", "Updated Notes", "Inquiries", `Notes updated for ticket #${id}`);
     setEditingNotesId(null);
     setNotesDraft("");
     toast.success("Notes saved for inquiry #" + id);
   };
 
-  const handleDeleteInquiry = (id: string, clientName: string) => {
+  const handleDeleteInquiry = async (id: string, clientName: string) => {
     if (confirm(`Are you sure you want to delete inquiry from "${clientName}" (${id})?`)) {
       const updated = inquiriesList.filter((q) => q.id !== id);
       setInquiriesList(updated);
       saveInquiriesList(updated);
+      deleteInquiryFromCloud(id).catch(() => {});
+      recordAdminLog(user?.email || "admin@crearemind.in", "Deleted Inquiry", "Inquiries", `Deleted ticket #${id} for ${clientName}`);
       toast.success(`Inquiry #${id} deleted.`);
     }
   };
@@ -307,14 +426,23 @@ function AdminPage() {
   };
 
   const filteredInquiries = inquiriesList.filter((q) => {
+    if (!q) return false;
+    const qSearch = inquirySearch.toLowerCase().trim();
+    const name = String(q.name || "").toLowerCase();
+    const phone = String(q.phone || "");
+    const email = String(q.email || "").toLowerCase();
+    const service = String(q.service || "").toLowerCase();
+    const id = String(q.id || "").toLowerCase();
+    const brief = String(q.brief || "").toLowerCase();
+
     const matchesSearch =
-      !inquirySearch.trim() ||
-      q.name.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      q.phone.includes(inquirySearch) ||
-      q.email.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      q.service.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      q.id.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      (q.brief && q.brief.toLowerCase().includes(inquirySearch.toLowerCase()));
+      !qSearch ||
+      name.includes(qSearch) ||
+      phone.includes(qSearch) ||
+      email.includes(qSearch) ||
+      service.includes(qSearch) ||
+      id.includes(qSearch) ||
+      brief.includes(qSearch);
 
     const matchesStatus = inquiryStatusFilter === "All" || q.status === inquiryStatusFilter;
     return matchesSearch && matchesStatus;
@@ -339,7 +467,7 @@ function AdminPage() {
   });
 
   const [userSearch, setUserSearch] = useState("");
-  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "Super Admin" | "Admin" | "Customer">("all");
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "Super Admin" | "Admin" | "Intern" | "Customer">("all");
   const [userProviderFilter, setUserProviderFilter] = useState<"all" | "Google OAuth" | "Email / Password" | "Phone OTP" | "GitHub">("all");
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
 
@@ -389,7 +517,7 @@ function AdminPage() {
           name: realName,
           phone: realPhone,
           provider: realProvider,
-          role: realRole,
+          role: updated[existingIndex].role || realRole,
         };
         const sanitized = sanitizeAndDedupeUsers(updated);
         localStorage.setItem("creare_admin_users_list", JSON.stringify(sanitized));
@@ -422,11 +550,22 @@ function AdminPage() {
   const [newUserRole, setNewUserRole] = useState<ManagedUser["role"]>("Customer");
   const [newUserCompany, setNewUserCompany] = useState("");
 
+  const handleRefreshUsers = async () => {
+    setIsRefreshingUsers(true);
+    try {
+      const liveUsers = await fetchUsersFromCloud();
+      setUsersList(liveUsers);
+      toast.success(`User directory synchronized (${liveUsers.length} total users)`);
+    } catch {
+      toast.error("Failed to sync users from cloud");
+    } finally {
+      setIsRefreshingUsers(false);
+    }
+  };
+
   const saveUsersList = (updated: ManagedUser[]) => {
     setUsersList(updated);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("creare_admin_users_list", JSON.stringify(updated));
-    }
+    saveUsersToLocalStorage(updated);
   };
 
   const handleCopyUserId = (id: string) => {
@@ -436,7 +575,7 @@ function AdminPage() {
     setTimeout(() => setCopiedUserId(null), 2000);
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) {
       toast.error("Please provide both name and email.");
@@ -450,11 +589,12 @@ function AdminPage() {
       year: "numeric",
     });
 
+    const cleanEmail = newUserEmail.trim().toLowerCase();
     const unique8DigitId = generateUnique8DigitId(usersList);
     const createdUser: ManagedUser = {
       id: unique8DigitId,
       name: newUserName.trim(),
-      email: newUserEmail.trim(),
+      email: cleanEmail,
       phone: newUserPhone.trim() || "—",
       provider: newUserProvider,
       role: newUserRole,
@@ -464,7 +604,13 @@ function AdminPage() {
 
     const updated = [createdUser, ...usersList];
     saveUsersList(updated);
-    toast.success(`Added customer: ${createdUser.name}`);
+    saveUserToCloud(createdUser).catch(() => {});
+    recordAdminLog(user?.email || "admin@crearemind.in", "Created Customer", "Users", `Added account ${createdUser.name} (${createdUser.id})`);
+    toast.success(
+      createdUser.role === "Intern"
+        ? `Added Intern: ${createdUser.name} (${createdUser.id}) with Workspace access!`
+        : `Added user: ${createdUser.name}`
+    );
 
     // Reset form
     setNewUserName("");
@@ -476,59 +622,61 @@ function AdminPage() {
     setShowAddUserModal(false);
   };
 
-  const handleUpdateUser = (e: React.FormEvent) => {
+  const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
 
     const updated = usersList.map((u) => (u.id === editingUser.id ? editingUser : u));
     saveUsersList(updated);
+    saveUserToCloud(editingUser).catch(() => {});
+    recordAdminLog(user?.email || "admin@crearemind.in", "Updated Customer", "Users", `Updated details for ${editingUser.name} (${editingUser.id})`);
     toast.success(`Updated details for ${editingUser.name}!`);
     setEditingUser(null);
   };
 
-  const handleDeleteUser = (id: string, name: string) => {
+  const handleDeleteUser = async (id: string, name: string) => {
+    const target = usersList.find((u) => u.id === id);
+    if (!target) return;
     if (confirm(`Are you sure you want to remove user "${name}" (${id})?`)) {
       const updated = usersList.filter((u) => u.id !== id);
       saveUsersList(updated);
+      deleteUserFromCloud(id, target.email).catch(() => {});
+      recordAdminLog(user?.email || "admin@crearemind.in", "Deleted Customer", "Users", `Removed account ${name} (${id})`);
       toast.success(`Removed user ${name}.`);
     }
   };
 
-  const handleRoleChange = (id: string, newRole: ManagedUser["role"]) => {
-    const updated = usersList.map((u) => (u.id === id ? { ...u, role: newRole } : u));
+  const handleRoleChange = async (id: string, newRole: ManagedUser["role"]) => {
+    const target = usersList.find((u) => u.id === id);
+    if (!target) return;
+    const updatedUser = { ...target, role: newRole };
+    const updated = usersList.map((u) => (u.id === id ? updatedUser : u));
     saveUsersList(updated);
+    saveUserToCloud(updatedUser).catch(() => {});
+    recordAdminLog(user?.email || "admin@crearemind.in", "Changed Role", "Users", `Changed role for ${target.name} to ${newRole}`);
     toast.success(`Updated role to ${newRole}!`);
   };
 
   const handleExportCSV = () => {
-    const headers = ["User ID", "Customer Name", "Email Address", "Mobile Number", "Sign-up Provider", "Account Role", "Joined Date"];
-    const rows = usersList.map((u) => [
-      u.id,
-      `"${u.name}"`,
-      u.email,
-      `"${u.phone}"`,
-      `"${u.provider}"`,
-      u.role,
-      `"${u.joinedDate}"`,
-    ]);
-    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `creare_users_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
+    exportUsersToCsv(usersList);
     toast.success("Exported users list to CSV!");
   };
 
   // Filtered users
   const filteredUsers = usersList.filter((u) => {
+    if (!u) return false;
+    const q = userSearch.toLowerCase().trim();
+    const name = String(u.name || "").toLowerCase();
+    const email = String(u.email || "").toLowerCase();
+    const id = String(u.id || "").toLowerCase();
+    const phone = String(u.phone || "");
+
     const matchesSearch =
-      !userSearch.trim() ||
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.id.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.phone.includes(userSearch);
+      !q ||
+      name.includes(q) ||
+      email.includes(q) ||
+      id.includes(q) ||
+      phone.includes(q);
 
     const matchesRole = userRoleFilter === "all" || u.role === userRoleFilter;
     const matchesProvider = userProviderFilter === "all" || u.provider === userProviderFilter;
@@ -806,14 +954,7 @@ function AdminPage() {
 
   // 1. Loading State (Light Theme)
   if (!ready) {
-    return (
-      <div className="min-h-screen bg-[#F8F7F4] text-neutral-900 grid place-items-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-neutral-900" />
-          <p className="text-xs font-mono text-neutral-500">Verifying administrative security credentials…</p>
-        </div>
-      </div>
-    );
+    return <AdminSkeleton />;
   }
 
   // 2. Not Logged In -> Redirect Card (Light Theme)
@@ -914,13 +1055,17 @@ function AdminPage() {
     );
   }
 
-  // Filtered media items
+  // Filtered media items (strictly real image & video assets)
   const filteredMedia = mediaList.filter((m) => {
+    if (!m) return false;
+    if (m.resource_type !== "image" && m.resource_type !== "video") return false;
+    if (!m.url || !m.url.startsWith("http")) return false;
+    if (m.public_id?.startsWith("CREARE_") || m.public_id?.startsWith("GLOBAL_")) return false;
     if (mediaFilter !== "all" && m.resource_type !== mediaFilter) return false;
     if (mediaSearch.trim()) {
-      const q = mediaSearch.toLowerCase();
-      const matchName = m.original_filename?.toLowerCase().includes(q);
-      const matchUrl = m.url.toLowerCase().includes(q);
+      const q = mediaSearch.toLowerCase().trim();
+      const matchName = String(m.original_filename || "").toLowerCase().includes(q);
+      const matchUrl = String(m.url || "").toLowerCase().includes(q);
       return matchName || matchUrl;
     }
     return true;
@@ -987,16 +1132,93 @@ function AdminPage() {
       {/* Main Admin Body */}
       <div className="flex-1 mx-auto max-w-7xl 2xl:max-w-[1540px] w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-6 lg:gap-8">
         {/* Left Sidebar Navigation */}
-        <aside className="w-full md:w-64 shrink-0 space-y-5">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-xs">
-            <p className="px-3 pt-2 pb-2 text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
-              Content Sections
+        <aside className="w-full md:w-64 shrink-0 space-y-4">
+          {/* Operations & Pipeline */}
+          <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-xs space-y-1">
+            <p className="px-3 pt-2 pb-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
+              Operations &amp; Pipeline
             </p>
             <nav className="space-y-1">
               {[
+                { id: "analytics", label: "Executive Analytics", icon: TrendingUp },
                 { id: "inquiries", label: "Client Inquiries", icon: Inbox, count: inquiriesList.length },
+                { id: "projects", label: "Projects & Milestones", icon: Briefcase, count: projectsList.length },
+                { id: "invoices", label: "Quotations & Invoices", icon: Receipt, count: invoicesList.length },
+                { id: "comms", label: "WhatsApp Desk", icon: MessageSquare },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as AdminTab)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all text-left cursor-pointer ${
+                      active
+                        ? "bg-neutral-900 text-white font-semibold shadow-xs"
+                        : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="h-4 w-4" />
+                      <span>{tab.label}</span>
+                    </div>
+                    {typeof tab.count === "number" && (
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${active ? "bg-white/20 text-white" : "bg-neutral-100 text-neutral-600"}`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Growth & Security */}
+          <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-xs space-y-1">
+            <p className="px-3 pt-2 pb-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
+              Growth &amp; Security
+            </p>
+            <nav className="space-y-1">
+              {[
+                { id: "seo", label: "SEO & Search Console", icon: Search },
                 { id: "users", label: "User Management", icon: Users, count: usersList.length },
-                { id: "media", label: "Photos & Media", icon: ImageIcon, count: mediaList.length },
+                { id: "logs", label: "Admin Activity Logs", icon: Activity },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as AdminTab)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all text-left cursor-pointer ${
+                      active
+                        ? "bg-neutral-900 text-white font-semibold shadow-xs"
+                        : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="h-4 w-4" />
+                      <span>{tab.label}</span>
+                    </div>
+                    {typeof tab.count === "number" && (
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${active ? "bg-white/20 text-white" : "bg-neutral-100 text-neutral-600"}`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Website CMS & Media */}
+          <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-xs space-y-1">
+            <p className="px-3 pt-2 pb-1.5 text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
+              Website CMS &amp; Media
+            </p>
+            <nav className="space-y-1">
+              {[
+                { id: "media", label: "Photos & Media", icon: ImageIcon, count: filteredMedia.length },
                 { id: "heroCards", label: "Hero 3D Showcase Cards", icon: Sparkles, count: (content.hero?.cards || DEFAULT_SITE_CONTENT.hero.cards).length },
                 { id: "services", label: "Our Services", icon: Globe, count: (content.services?.items || DEFAULT_SITE_CONTENT.services.items).length },
                 { id: "stream", label: "3D Work Stream", icon: Workflow, count: (content.streamImages?.items || DEFAULT_SITE_CONTENT.streamImages.items).length },
@@ -1049,6 +1271,64 @@ function AdminPage() {
         <main className="flex-1 min-w-0">
           
           {/* ============================================================ */}
+          {/* TAB: EXECUTIVE ANALYTICS & PIPELINE                         */}
+          {/* ============================================================ */}
+          {activeTab === "analytics" && (
+            <AdminAnalyticsView
+              inquiries={inquiriesList}
+              projects={projectsList}
+              invoices={invoicesList}
+              onNavigateTab={(tab) => setActiveTab(tab as AdminTab)}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: PROJECTS & MILESTONES                                  */}
+          {/* ============================================================ */}
+          {activeTab === "projects" && (
+            <AdminProjectsView
+              projects={projectsList}
+              onProjectsChange={(updated) => setProjectsList(updated)}
+              adminEmail={user?.email || "admin@crearemind.in"}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: QUOTATIONS & GST INVOICES                             */}
+          {/* ============================================================ */}
+          {activeTab === "invoices" && (
+            <AdminInvoicesView
+              invoices={invoicesList}
+              onInvoicesChange={(updated) => setInvoicesList(updated)}
+              adminEmail={user?.email || "admin@crearemind.in"}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: WHATSAPP DESK & CLIENT MESSAGING                       */}
+          {/* ============================================================ */}
+          {activeTab === "comms" && (
+            <AdminCommsView
+              inquiries={inquiriesList}
+              adminEmail={user?.email || "admin@crearemind.in"}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: SEO & GOOGLE SEARCH CONSOLE                           */}
+          {/* ============================================================ */}
+          {activeTab === "seo" && (
+            <AdminSeoView
+              adminEmail={user?.email || "admin@crearemind.in"}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: ADMIN AUDIT LOGS                                       */}
+          {/* ============================================================ */}
+          {activeTab === "logs" && <AdminLogsView />}
+
+          {/* ============================================================ */}
           {/* TAB: CLIENT INQUIRIES & CALLBACK REQUESTS (NEW SECTION)      */}
           {/* ============================================================ */}
           {activeTab === "inquiries" && (
@@ -1072,14 +1352,12 @@ function AdminPage() {
                 <div className="flex flex-wrap items-center gap-2.5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setInquiriesList(getStoredInquiries());
-                      toast.success("Client inquiries refreshed!");
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    onClick={handleRefreshInquiries}
+                    disabled={isRefreshingInquiries}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-neutral-500" />
-                    <span>Refresh</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-neutral-500 ${isRefreshingInquiries ? "animate-spin" : ""}`} />
+                    <span>{isRefreshingInquiries ? "Syncing..." : "Refresh"}</span>
                   </button>
 
                   <button
@@ -1192,8 +1470,8 @@ function AdminPage() {
               ) : (
                 <div className="space-y-4">
                   {filteredInquiries.map((inquiry) => {
-                    const cleanPhone = inquiry.phone.replace(/[^0-9]/g, "");
-                    const waMessage = `Hello ${inquiry.name}! This is Creare Mind regarding your inquiry #${inquiry.id} for ${inquiry.service}. When is a good time to discuss your project?`;
+                    const cleanPhone = String(inquiry.phone || "").replace(/[^0-9]/g, "");
+                    const waMessage = `Hello ${inquiry.name || "Client"}! This is Creare Mind regarding your inquiry #${inquiry.id || ""} for ${inquiry.service || "our services"}. When is a good time to discuss your project?`;
                     const waUrl = `https://wa.me/${cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`}?text=${encodeURIComponent(waMessage)}`;
 
                     const statusStyles: Record<ClientInquiry["status"], string> = {
@@ -1414,18 +1692,29 @@ function AdminPage() {
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-neutral-200 pb-5">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-mono uppercase tracking-wider font-semibold mb-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <Users className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Customer & Account Directory</span>
+                    <span>Database Synced (Live)</span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
                     User Management
                   </h2>
                   <p className="text-xs text-neutral-500 mt-1 max-w-xl">
-                    Manage client profiles, customer accounts, authentication providers, and access privileges.
+                    Live client profiles, customer accounts, and authentication providers synchronized directly from Supabase database.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleRefreshUsers}
+                    disabled={isRefreshingUsers}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-neutral-500 ${isRefreshingUsers ? "animate-spin" : ""}`} />
+                    <span>{isRefreshingUsers ? "Syncing..." : "Refresh Users"}</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleExportCSV}
@@ -1466,19 +1755,19 @@ function AdminPage() {
 
                 <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
-                    Administrators
+                    Appointed Interns
                   </span>
                   <div className="mt-1 text-2xl font-bold text-emerald-600">
-                    {usersList.filter((u) => u.role !== "Customer").length}
+                    {usersList.filter((u) => u.role === "Intern").length}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
-                    Google OAuth
+                    Administrators
                   </span>
-                  <div className="mt-1 text-2xl font-bold text-purple-600">
-                    {usersList.filter((u) => u.provider === "Google OAuth").length}
+                  <div className="mt-1 text-2xl font-bold text-neutral-900">
+                    {usersList.filter((u) => u.role === "Super Admin" || u.role === "Admin").length}
                   </div>
                 </div>
               </div>
@@ -1513,6 +1802,7 @@ function AdminPage() {
                   >
                     <option value="all">All Roles</option>
                     <option value="Customer">Customer</option>
+                    <option value="Intern">Intern</option>
                     <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
                   </select>
@@ -1582,11 +1872,13 @@ function AdminPage() {
                               <td className="py-3.5 px-4 whitespace-nowrap">
                                 <div className="flex items-center gap-2.5">
                                   <div className="w-8 h-8 rounded-full bg-neutral-900 text-white font-medium text-[11px] grid place-items-center shrink-0 uppercase shadow-2xs font-mono">
-                                    {u.name
-                                      .split(" ")
-                                      .map((n) => n[0])
+                                    {String(u.name || u.email || "U")
+                                      .trim()
+                                      .split(/\s+/)
+                                      .map((n) => n[0] || "")
                                       .slice(0, 2)
-                                      .join("")}
+                                      .join("")
+                                      .toUpperCase()}
                                   </div>
                                   <div>
                                     <p className="font-semibold text-neutral-900 leading-tight">{u.name}</p>
@@ -1646,12 +1938,16 @@ function AdminPage() {
                                       u.role === "Super Admin"
                                         ? "bg-purple-100 text-purple-800 border border-purple-200"
                                         : u.role === "Admin"
-                                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                        ? "bg-neutral-900 text-white border border-neutral-800"
+                                        : u.role === "Intern"
+                                        ? "bg-emerald-50 text-emerald-800 border border-emerald-300 font-black"
                                         : "bg-blue-50 text-blue-700 border border-blue-200"
                                     }`}
                                   >
                                     {u.role === "Super Admin" || u.role === "Admin" ? (
                                       <ShieldCheck className="w-3 h-3" />
+                                    ) : u.role === "Intern" ? (
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     ) : (
                                       <UserCheck className="w-3 h-3" />
                                     )}
@@ -1667,7 +1963,45 @@ function AdminPage() {
 
                               {/* Actions */}
                               <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                <div className="inline-flex items-center gap-1 justify-end">
+                                <div className="inline-flex items-center gap-1.5 justify-end">
+                                  {u.role === "Customer" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRoleChange(u.id, "Intern")}
+                                      className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-neutral-900 text-white hover:bg-neutral-800 shadow-2xs transition-colors cursor-pointer"
+                                      title="Appoint as Intern"
+                                    >
+                                      + Appoint Intern
+                                    </button>
+                                  )}
+
+                                  {u.role === "Intern" && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(
+                                            `Hello ${u.name}, your Creare Mind Intern Workspace is ready!\nLogin: https://crearemind.in/auth?redirect=/intern\nYour 8-Digit Intern ID: ${u.id}`
+                                          );
+                                          toast.success(`Copied Intern Invite & Workspace link for ${u.name}!`);
+                                        }}
+                                        className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                        title="Copy Intern Workspace Link & Instructions"
+                                      >
+                                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                                        <span>Copy Link</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRoleChange(u.id, "Customer")}
+                                        className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 transition-colors cursor-pointer"
+                                        title="Remove Intern Role"
+                                      >
+                                        Demote to Client
+                                      </button>
+                                    </>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={() => setEditingUser(u)}
@@ -1784,6 +2118,7 @@ function AdminPage() {
                         className="w-full h-9 rounded-lg border border-neutral-200 bg-[#FAF9F6] px-2.5 text-neutral-900 outline-none focus:border-neutral-900 focus:bg-white"
                       >
                         <option value="Customer">Customer</option>
+                        <option value="Intern">Intern (Appoint Workspace Access)</option>
                         <option value="Admin">Admin</option>
                         <option value="Super Admin">Super Admin</option>
                       </select>
@@ -1805,6 +2140,18 @@ function AdminPage() {
                       </select>
                     </div>
                   </div>
+
+                  {newUserRole === "Intern" && (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-50/60 p-3 text-[11px] text-emerald-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5 text-emerald-950">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Intern Access Notice</span>
+                      </p>
+                      <p className="text-emerald-800 leading-relaxed">
+                        Appointing as Intern grants full workspace access to <strong className="font-mono">/intern</strong>. The intern can sign in with this email using Google Sign-In or by signing up with a password on the website.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-neutral-100">
                     <button
@@ -1909,6 +2256,7 @@ function AdminPage() {
                         className="w-full h-9 rounded-lg border border-neutral-200 bg-[#FAF9F6] px-2.5 text-neutral-900 outline-none focus:border-neutral-900 focus:bg-white"
                       >
                         <option value="Customer">Customer</option>
+                        <option value="Intern">Intern (Appoint Workspace Access)</option>
                         <option value="Admin">Admin</option>
                         <option value="Super Admin">Super Admin</option>
                       </select>
@@ -1930,6 +2278,18 @@ function AdminPage() {
                       </select>
                     </div>
                   </div>
+
+                  {editingUser.role === "Intern" && (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-50/60 p-3 text-[11px] text-emerald-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1.5 text-emerald-950">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Intern Access Notice</span>
+                      </p>
+                      <p className="text-emerald-800 leading-relaxed">
+                        Appointing as Intern grants full workspace access to <strong className="font-mono">/intern</strong>. The intern can sign in with this email using Google Sign-In or by signing up with a password on the website.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-neutral-100">
                     <button
@@ -2062,7 +2422,7 @@ function AdminPage() {
                           : "text-neutral-600 hover:text-neutral-900"
                       }`}
                     >
-                      {filter === "all" ? `All (${mediaList.length})` : filter === "image" ? "Photos" : "Videos"}
+                      {filter === "all" ? `All (${filteredMedia.length})` : filter === "image" ? "Photos" : "Videos"}
                     </button>
                   ))}
                 </div>
@@ -3698,7 +4058,7 @@ function AdminPage() {
 
             {/* Media Library Thumbnails */}
             <div className="flex-1 overflow-y-auto p-4 bg-white">
-              {mediaList.length === 0 ? (
+              {filteredMedia.length === 0 ? (
                 <div className="py-12 text-center text-neutral-500 text-xs">
                   <p>No media found in Cloudinary library yet.</p>
                   <button
@@ -3710,7 +4070,7 @@ function AdminPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {mediaList.map((m) => (
+                  {filteredMedia.map((m) => (
                     <div
                       key={m.id}
                       onClick={() => handleApplyPickedMedia(m.url)}
@@ -3797,4 +4157,3 @@ function AdminPage() {
   );
 }
 
-export default AdminPage;

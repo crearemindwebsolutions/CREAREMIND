@@ -110,6 +110,11 @@ export function getLocalMedia(): MediaRecord[] {
     const deleted = getDeletedMediaKeys();
     return list.filter(
       (m) =>
+        (m.resource_type === "image" || m.resource_type === "video") &&
+        m.url &&
+        m.url.startsWith("http") &&
+        !m.public_id?.startsWith("CREARE_") &&
+        !m.public_id?.startsWith("GLOBAL_") &&
         !deleted.has(m.id) &&
         !deleted.has(m.url) &&
         !deleted.has(m.public_id) &&
@@ -348,16 +353,22 @@ export async function fetchUserMedia(userId?: string | null): Promise<MediaRecor
   const deletedSet = getDeletedMediaKeys();
 
   try {
-    // 1. Fetch from publicSupabase which has role 'anon' (all media is visible)
+    // 1. Fetch strictly images and videos from publicSupabase (all media is visible)
     const { data, error } = await publicSupabase
       .from("media")
       .select("*")
+      .in("resource_type", ["image", "video"])
       .order("created_at", { ascending: false });
 
     if (error) {
       console.warn("Supabase query returned error, serving local cached media:", error.message);
       return localItems.filter(
         (m) =>
+          (m.resource_type === "image" || m.resource_type === "video") &&
+          m.url &&
+          m.url.startsWith("http") &&
+          !m.public_id?.startsWith("CREARE_") &&
+          !m.public_id?.startsWith("GLOBAL_") &&
           !deletedSet.has(m.id) &&
           !deletedSet.has(m.url) &&
           !deletedSet.has(m.public_id) &&
@@ -397,8 +408,13 @@ export async function fetchUserMedia(userId?: string | null): Promise<MediaRecor
       saveDeletedMediaKeysBatch(newlyDiscoveredDeleted);
     }
 
-    // 3. Filter DB items to strictly exclude tombstones and any deleted media
+    // 3. Filter DB items to strictly include valid images/videos and exclude non-media/tombstones
     const isCleanItem = (m: MediaRecord) =>
+      (m.resource_type === "image" || m.resource_type === "video") &&
+      m.url &&
+      m.url.startsWith("http") &&
+      !m.public_id?.startsWith("CREARE_") &&
+      !m.public_id?.startsWith("GLOBAL_") &&
       !deletedSet.has(m.id) &&
       !deletedSet.has(m.url) &&
       !deletedSet.has(m.public_id) &&

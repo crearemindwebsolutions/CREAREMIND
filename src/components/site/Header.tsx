@@ -3,7 +3,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { NavLink } from "./NavLink";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronDown, Menu, X, ArrowRight, User } from "lucide-react";
+import { ChevronDown, Menu, X, ArrowRight, User, Sparkles } from "lucide-react";
+import { getUserRoleAsync } from "@/lib/admin-users";
 import { Logo, LogoMark } from "./Logo";
 import { scrollToEl, lenisInstance } from "./SmoothScroll";
 import tplImg from "@/assets/tpl-2.jpg";
@@ -233,6 +234,17 @@ export function Header() {
   const { feature, active } = useFeatureSection();
   const ref = useRef<HTMLElement>(null);
   const { user } = useSession();
+  const [isInternUser, setIsInternUser] = useState(false);
+
+  useEffect(() => {
+    if (user?.email) {
+      getUserRoleAsync(user.email).then((role) => {
+        setIsInternUser(role === "Intern");
+      });
+    } else {
+      setIsInternUser(false);
+    }
+  }, [user?.email]);
 
   // Caret calculation for pointing directly to active menu item
   const [caretLeft, setCaretLeft] = useState<number | null>(null);
@@ -468,6 +480,19 @@ export function Header() {
 
           {/* Right: Log In / Profile & Get Started */}
           <div className="flex items-center justify-end gap-2.5 sm:gap-4">
+            {user && isInternUser && (
+              <Link
+                to="/intern"
+                className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/25 hover:text-white transition-all shadow-xs ${
+                  feature || mobile ? "opacity-0 pointer-events-none" : ""
+                }`}
+                title="Intern Workspace"
+              >
+                <Sparkles className="h-3 w-3 text-emerald-400" />
+                <span>Intern Workspace</span>
+              </Link>
+            )}
+
             {!user ? (
               <Link
                 to="/auth"
@@ -633,6 +658,18 @@ export function Header() {
               </div>
               Profile
             </Link>
+            {isInternUser && (
+              <Link
+                to="/intern"
+                onClick={() => setMobile(false)}
+                className="flex items-center gap-3 py-2 text-lg font-medium text-emerald-400 hover:text-emerald-300"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-600/20 text-emerald-400">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <span>Intern Workspace</span>
+              </Link>
+            )}
             <Link
               to="/contact"
               onClick={() => setMobile(false)}

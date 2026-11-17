@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { syncSessionUserToCloud, getUserRoleAsync } from "@/lib/admin-users";
+import { ProfileSkeleton } from "@/components/ui/SiteSkeletons";
 import {
   User,
   Mail,
@@ -40,6 +42,7 @@ export const Route = createFileRoute("/profile")({
     ],
   }),
   component: ProfilePage,
+  pendingComponent: ProfileSkeleton,
 });
 
 interface PasswordRules {
@@ -80,12 +83,27 @@ function getStrengthScore(rules: PasswordRules): number {
   ].filter(Boolean).length;
 }
 
-type TabType = "overview" | "edit" | "security" | "workspace" | "admin";
+type TabType = "overview" | "edit" | "security" | "workspace" | "admin" | "intern";
 
 function ProfilePage() {
   const { user, ready } = useSession();
   const navigate = useNavigate();
   const userIsAdmin = isAdmin(user);
+
+  const [currentUserRole, setCurrentUserRole] = useState<"Super Admin" | "Admin" | "Intern" | "Customer">("Customer");
+  const [, setRoleLoading] = useState(true);
+
+  // Authoritatively load user's appointed role directly from database
+  useEffect(() => {
+    if (!user?.email) return;
+    getUserRoleAsync(user.email).then((role) => {
+      setCurrentUserRole(role);
+      setRoleLoading(false);
+    });
+  }, [user?.email]);
+
+  const isIntern = currentUserRole === "Intern";
+  const isElevatedAdmin = userIsAdmin || currentUserRole === "Super Admin" || currentUserRole === "Admin";
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [, setProfileLoading] = useState(true);
@@ -176,6 +194,16 @@ function ProfilePage() {
           phone: phone.trim(),
         },
       });
+
+      // Sync updated user details to cloud directory
+      syncSessionUserToCloud({
+        ...user,
+        user_metadata: {
+          ...user.user_metadata,
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+        },
+      } as any).catch(() => {});
 
       setProfileMsg({ ok: true, text: "Profile details saved successfully!" });
     } catch (err: unknown) {
@@ -268,14 +296,7 @@ function ProfilePage() {
   };
 
   if (!ready || !user) {
-    return (
-      <section className="grid min-h-screen place-items-center bg-paper px-5 py-32 text-ink">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-ink border-t-transparent" />
-          <p className="text-sm text-ink-muted">Loading your profile…</p>
-        </div>
-      </section>
-    );
+    return <ProfileSkeleton />;
   }
 
   const avatarInitial = (() => {
@@ -316,13 +337,22 @@ function ProfilePage() {
             <span className="font-medium text-ink">Account Profile</span>
           </div>
           <div className="flex items-center gap-3">
-            {userIsAdmin && (
+            {isElevatedAdmin && (
               <Link
                 to="/admin"
                 className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-500/20 transition-colors"
               >
                 <ShieldAlert className="h-3.5 w-3.5 text-indigo-600" />
                 <span>Admin Console</span>
+              </Link>
+            )}
+            {(isIntern || isElevatedAdmin) && (
+              <Link
+                to="/intern"
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-500/20 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-red-600" />
+                <span>Intern Dashboard</span>
               </Link>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-600">
@@ -363,10 +393,16 @@ function ProfilePage() {
                   <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                     {fullName || "Creare Mind Member"}
                   </h1>
-                  {userIsAdmin && (
+                  {isElevatedAdmin && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">
                       <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
                       Administrator
+                    </span>
+                  )}
+                  {isIntern && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 shadow-2xs">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Appointed Intern
                     </span>
                   )}
                 </div>
@@ -401,13 +437,22 @@ function ProfilePage() {
 
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-3 pt-2 md:pt-0">
-              {userIsAdmin && (
+              {isElevatedAdmin && (
                 <Link
                   to="/admin"
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md hover:from-indigo-500 hover:to-violet-500 transition-all hover:scale-[1.02] active:scale-95"
                 >
                   <ShieldAlert className="h-3.5 w-3.5" />
                   <span>Enter Admin Panel</span>
+                </Link>
+              )}
+              {(isIntern || isElevatedAdmin) && (
+                <Link
+                  to="/intern"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#E63946] hover:bg-[#d62839] px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all hover:scale-[1.02] active:scale-95"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Open Intern Workspace →</span>
                 </Link>
               )}
               <button
@@ -426,7 +471,8 @@ function ProfilePage() {
         <div className="mb-8 flex flex-wrap gap-2 border-b border-ink/10 pb-3">
           {[
             { id: "overview", label: "Account Overview", icon: Sparkles },
-            ...(userIsAdmin ? [{ id: "admin", label: "Admin Portal", icon: ShieldAlert }] : []),
+            ...(isElevatedAdmin ? [{ id: "admin", label: "Admin Portal", icon: ShieldAlert }] : []),
+            ...(isIntern || isElevatedAdmin ? [{ id: "intern", label: "Intern Workspace", icon: Sparkles }] : []),
             { id: "edit", label: "Edit Profile", icon: User },
             { id: "security", label: "Security & Credentials", icon: Key },
             { id: "workspace", label: "Services & Ecosystem", icon: Layers },
@@ -437,7 +483,13 @@ function ProfilePage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id as TabType)}
+                onClick={() => {
+                  if (tab.id === "intern") {
+                    navigate({ to: "/intern" });
+                  } else {
+                    setActiveTab(tab.id as TabType);
+                  }
+                }}
                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold tracking-wide transition-all ${
                   active
                     ? "bg-ink text-paper shadow-sm"
@@ -454,6 +506,31 @@ function ProfilePage() {
         {/* Tab 1: Account Overview */}
         {activeTab === "overview" && (
           <div className="space-y-8 animate-in fade-in duration-300">
+            {/* Active Internship Banner */}
+            {(isIntern || isElevatedAdmin) && (
+              <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/80 via-white to-emerald-50/30 p-6 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-200">
+                      <Sparkles className="h-3 w-3 text-emerald-600" />
+                      <span>{isIntern ? "Active Internship Access Granted" : "Internship Administrator Oversight"}</span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight">
+                      Creare Mind Intern Workspace
+                    </h3>
+                    <p className="text-xs text-neutral-600 max-w-xl leading-relaxed">
+                      You have full access to your assigned engineering tasks, active client and internal projects, real-time attendance clock-in, and development resources.
+                    </p>
+                  </div>
+                  <Link
+                    to="/intern"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-neutral-800 transition-colors shrink-0"
+                  >
+                    <span>Open Workspace →</span>
+                  </Link>
+                </div>
+              </div>
+            )}
             {/* Account Details Card */}
             <div className="rounded-2xl border border-ink/15 bg-paper p-6 md:p-8">
               <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-ink/10 pb-6">
