@@ -86,57 +86,67 @@ export function InternResourcesView({ resources }: InternResourcesViewProps) {
 
       {/* Resources Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredResources.map((res) => {
-          const formatBadgeColor = {
-            PDF: "bg-neutral-100 text-neutral-800 border border-neutral-200",
-            Doc: "bg-neutral-100 text-neutral-800 border border-neutral-200",
-            Figma: "bg-neutral-100 text-neutral-800 border border-neutral-200",
-            Video: "bg-amber-50 text-amber-800 border border-amber-200",
-            Repo: "bg-emerald-50 text-emerald-800 border border-emerald-200",
-          }[res.format];
+        {filteredResources.length === 0 ? (
+          <div className="col-span-full rounded-2xl border border-neutral-200/80 bg-white p-12 text-center shadow-xs space-y-2">
+            <BookOpen className="h-8 w-8 mx-auto text-neutral-300" />
+            <h3 className="text-sm font-bold text-neutral-900">No Resources Found</h3>
+            <p className="text-[11px] text-neutral-400 max-w-sm mx-auto">
+              Technical documentation, engineering handbooks, and architecture guidelines will appear here when published.
+            </p>
+          </div>
+        ) : (
+          filteredResources.map((res) => {
+            const formatBadgeColor = {
+              PDF: "bg-neutral-100 text-neutral-800 border border-neutral-200",
+              Doc: "bg-neutral-100 text-neutral-800 border border-neutral-200",
+              Figma: "bg-neutral-100 text-neutral-800 border border-neutral-200",
+              Video: "bg-amber-50 text-amber-800 border border-amber-200",
+              Repo: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+            }[res.format];
 
-          return (
-            <div
-              key={res.id}
-              className="flex flex-col justify-between rounded-xl border border-neutral-200/80 bg-white p-4 shadow-xs hover:border-neutral-300 hover:shadow-xs transition-all group"
-            >
-              <div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold font-mono ${formatBadgeColor}`}
-                  >
-                    {res.format}
-                  </span>
-                  <span className="text-[10px] text-neutral-400 font-mono">
-                    {res.sizeOrDuration}
-                  </span>
+            return (
+              <div
+                key={res.id}
+                className="flex flex-col justify-between rounded-xl border border-neutral-200/80 bg-white p-4 shadow-xs hover:border-neutral-300 hover:shadow-xs transition-all group"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold font-mono ${formatBadgeColor}`}
+                    >
+                      {res.format}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 font-mono">
+                      {res.sizeOrDuration}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-2.5 text-sm font-bold text-neutral-900 group-hover:text-neutral-700 transition-colors">
+                    {res.title}
+                  </h3>
+
+                  <p className="mt-1 text-xs text-neutral-500 leading-relaxed">
+                    {res.description}
+                  </p>
                 </div>
 
-                <h3 className="mt-2.5 text-sm font-bold text-neutral-900 group-hover:text-neutral-700 transition-colors">
-                  {res.title}
-                </h3>
+                <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between">
+                  <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600 font-medium">
+                    {res.category}
+                  </span>
 
-                <p className="mt-1 text-xs text-neutral-500 leading-relaxed">
-                  {res.description}
-                </p>
+                  <button
+                    onClick={() => alert(`Opening resource: ${res.title}`)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-900 hover:text-neutral-700 transition-colors cursor-pointer"
+                  >
+                    <span>Access Resource</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
-
-              <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between">
-                <span className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-600 font-medium">
-                  {res.category}
-                </span>
-
-                <button
-                  onClick={() => alert(`Opening resource: ${res.title}`)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-900 hover:text-neutral-700 transition-colors cursor-pointer"
-                >
-                  <span>Access Resource</span>
-                  <ExternalLink className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -18,13 +18,37 @@ interface InternCalendarViewProps {
 }
 
 export function InternCalendarView({ schedule }: InternCalendarViewProps) {
-  const [selectedDate, setSelectedDate] = useState<number>(14);
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentMonthName = today.toLocaleDateString("en-US", { month: "long" });
+  const currentYear = today.getFullYear();
+
+  const [selectedDate, setSelectedDate] = useState<number>(currentDay);
   const [activeView, setActiveView] = useState<"day" | "week" | "month">("month");
   const [selectedMeeting, setSelectedMeeting] = useState<ScheduleItem | null>(null);
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  // November 2026 starts on Sunday (day 1)
-  const novemberDays = Array.from({ length: 30 }, (_, i) => i + 1);
+  const daysInMonth = new Date(currentYear, today.getMonth() + 1, 0).getDate();
+  const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // Group real events by day of month from the schedule prop
+  const eventsByDay = new Map<number, ScheduleItem[]>();
+  schedule.forEach((item) => {
+    if (item.date) {
+      const parsedDate = new Date(item.date);
+      if (!isNaN(parsedDate.getTime())) {
+        const d = parsedDate.getDate();
+        if (!eventsByDay.has(d)) eventsByDay.set(d, []);
+        eventsByDay.get(d)!.push(item);
+      }
+    }
+  });
+
+  const selectedDaySchedule = schedule.filter((item) => {
+    if (!item.date) return false;
+    const parsed = new Date(item.date);
+    return !isNaN(parsed.getTime()) && parsed.getDate() === selectedDate;
+  });
 
   return (
     <div className="space-y-6">
@@ -37,7 +61,7 @@ export function InternCalendarView({ schedule }: InternCalendarViewProps) {
               <span>Intern Schedule</span>
             </div>
             <h2 className="mt-2 text-lg sm:text-xl font-bold text-neutral-900">
-              November 2026
+              {currentMonthName} {currentYear}
             </h2>
             <p className="mt-0.5 text-xs text-neutral-500">
               Standups, sprint reviews, task deliverables, and technical mentor syncs.
@@ -91,11 +115,11 @@ export function InternCalendarView({ schedule }: InternCalendarViewProps) {
 
           {/* Days Grid */}
           <div className="grid grid-cols-7 divide-x divide-y divide-neutral-100 bg-white">
-            {novemberDays.map((day) => {
-              const isToday = day === 14;
+            {monthDays.map((day) => {
+              const isToday = day === currentDay;
               const isSelected = day === selectedDate;
-              // Add mock event markers on specific days
-              const hasEvents = [10, 12, 14, 16, 18, 20, 25].includes(day);
+              const dayEvents = eventsByDay.get(day) || [];
+              const hasEvents = dayEvents.length > 0;
 
               return (
                 <div
@@ -126,17 +150,18 @@ export function InternCalendarView({ schedule }: InternCalendarViewProps) {
 
                   {hasEvents && (
                     <div className="mt-1.5 space-y-1">
-                      {day === 14 ? (
-                        <>
-                          <div className="rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] font-semibold text-neutral-800 border border-neutral-200 truncate">
-                            10:00 AM Standup
-                          </div>
-                          <div className="hidden sm:block rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] font-semibold text-neutral-800 border border-neutral-200 truncate">
-                            06:00 PM TSK Due
-                          </div>
-                        </>
-                      ) : (
-                        <div className="h-1.5 w-1.5 rounded-full bg-neutral-900 mx-auto sm:mx-0 mt-2" />
+                      {dayEvents.slice(0, 2).map((evt) => (
+                        <div
+                          key={evt.id}
+                          className="rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] font-semibold text-neutral-800 border border-neutral-200 truncate"
+                        >
+                          {evt.time ? `${evt.time} ` : ""}{evt.title}
+                        </div>
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <div className="text-[8px] font-mono text-neutral-400 pl-0.5">
+                          +{dayEvents.length - 2} more
+                        </div>
                       )}
                     </div>
                   )}
@@ -151,24 +176,24 @@ export function InternCalendarView({ schedule }: InternCalendarViewProps) {
       <div className="rounded-xl border border-neutral-200/80 bg-white p-5 shadow-xs">
         <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
           <h3 className="text-sm font-bold text-neutral-900">
-            Agenda for {selectedDate} November 2026
+            Agenda for {selectedDate} {currentMonthName} {currentYear}
           </h3>
           <span className="text-xs font-mono text-neutral-500">
-            {schedule.length} Events Scheduled
+            {selectedDaySchedule.length} Events Scheduled
           </span>
         </div>
 
         <div className="mt-4 space-y-3">
-          {schedule.length === 0 ? (
+          {selectedDaySchedule.length === 0 ? (
             <div className="py-8 text-center text-neutral-400 text-xs">
               <CalendarIcon className="h-6 w-6 mx-auto mb-2 text-neutral-300" />
-              <p className="font-semibold text-neutral-700">No meetings scheduled for this date</p>
+              <p className="font-semibold text-neutral-700">No events scheduled for this date</p>
               <p className="text-[11px] text-neutral-400 mt-0.5">
                 Sprint syncs, tech reviews, and standups will appear here when scheduled by your mentor.
               </p>
             </div>
           ) : (
-            schedule.map((item) => (
+            selectedDaySchedule.map((item) => (
               <div
                 key={item.id}
                 onClick={() => setSelectedMeeting(item)}

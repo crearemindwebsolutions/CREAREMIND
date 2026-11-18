@@ -30,7 +30,7 @@ export function InternAttendanceView({
 }: InternAttendanceViewProps) {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaveReason, setLeaveReason] = useState("");
-  const [leaveDate, setLeaveDate] = useState("2026-11-20");
+  const [leaveDate, setLeaveDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [leaveSubmitted, setLeaveSubmitted] = useState(false);
 
   const presentDays = attendance.filter((a) => a.status === "present").length;
@@ -171,7 +171,7 @@ export function InternAttendanceView({
         <div className="flex items-center justify-between border-b border-neutral-200 p-4 bg-neutral-50/70">
           <div>
             <h3 className="text-sm font-bold text-neutral-900">
-              November 2026 Shift Log Sheet
+              {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })} Shift Log Sheet
             </h3>
             <p className="text-[11px] text-neutral-500">
               Verified timestamps recorded through Creare Mind internal portal.

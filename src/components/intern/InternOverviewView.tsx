@@ -501,7 +501,7 @@ export function InternOverviewView({
               <div className="flex items-center justify-between py-1 border-b border-neutral-100">
                 <span className="text-neutral-500">8-Digit Intern ID:</span>
                 <div className="flex items-center gap-1.5 font-mono font-bold text-neutral-900">
-                  <span>{profile.id || "54360931"}</span>
+                  <span>{profile.id || "00000000"}</span>
                   <button
                     type="button"
                     onClick={handleCopyId}
@@ -515,7 +515,7 @@ export function InternOverviewView({
 
               <div className="flex items-center justify-between py-1 border-b border-neutral-100">
                 <span className="text-neutral-500">Role Title:</span>
-                <span className="font-semibold text-neutral-800">{profile.role || "Software Engineering Intern"}</span>
+                <span className="font-semibold text-neutral-800">{profile.role || "Intern"}</span>
               </div>
 
               <div className="flex items-center justify-between py-1 border-b border-neutral-100">
@@ -526,7 +526,7 @@ export function InternOverviewView({
               <div className="flex items-center justify-between py-1">
                 <span className="text-neutral-500">College / Dept:</span>
                 <span className="font-semibold text-neutral-800 truncate max-w-[150px]">
-                  {profile.college || "Engineering College"}
+                  {profile.college && profile.college !== "—" ? profile.college : "—"}
                 </span>
               </div>
             </div>
@@ -660,7 +660,7 @@ export function InternOverviewView({
                   </p>
                 </div>
                 <div className="text-right font-sans text-xs text-neutral-500">
-                  <p className="font-mono font-bold text-neutral-900">REF: CM-INT-{profile.id || "54360931"}</p>
+                  <p className="font-mono font-bold text-neutral-900">REF: CM-INT-{profile.id || "00000000"}</p>
                   <p>Date: {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
                 </div>
               </div>
@@ -669,26 +669,26 @@ export function InternOverviewView({
                 <p className="font-sans font-bold text-neutral-900">Dear {profile.name || "Intern Candidate"},</p>
                 <p className="mt-2">
                   On behalf of <strong>Creare Mind Studio</strong>, we are pleased to offer you an official
-                  appointment as a <strong>{profile.role || "Software Engineering Intern"}</strong>.
+                  appointment as a <strong>{profile.role || "Intern"}</strong>.
                 </p>
               </div>
 
               <div className="bg-white p-4 rounded-lg border border-neutral-200 space-y-2 font-sans text-xs">
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Intern ID:</span>
-                  <span className="font-mono font-bold text-neutral-900">{profile.id || "54360931"}</span>
+                  <span className="font-mono font-bold text-neutral-900">{profile.id || "00000000"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Department:</span>
-                  <span className="font-semibold text-neutral-900">{profile.department || "Full-Stack Development"}</span>
+                  <span className="font-semibold text-neutral-900">{profile.department || "Engineering"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Assigned Mentor:</span>
-                  <span className="font-semibold text-neutral-900">{profile.mentorName || "Gowthaman PR"} (Founder / CTO)</span>
+                  <span className="font-semibold text-neutral-900">{profile.mentorName || "Gowthaman PR"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Duration & Term:</span>
-                  <span className="font-semibold text-neutral-900">{profile.startDate || "18 Nov 2026"} to {profile.endDate || "18 Feb 2027"}</span>
+                  <span className="font-semibold text-neutral-900">{profile.startDate && profile.startDate !== "—" ? profile.startDate : "Commencement"} to {profile.endDate && profile.endDate !== "—" ? profile.endDate : "Completion"}</span>
                 </div>
               </div>
 

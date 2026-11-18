@@ -86,25 +86,40 @@ export function useInternStore(options?: UseInternStoreOptions) {
     }
   }, [user?.email, managedUser?.id, managedUser?.role, managedUser?.internDetails]);
 
-  const [tasks, setTasksState] = useState<InternTask[]>(() =>
-    getFromStorage("tasks", INITIAL_TASKS)
-  );
+  const [tasks, setTasksState] = useState<InternTask[]>(() => {
+    const loaded = getFromStorage("tasks", INITIAL_TASKS);
+    return Array.isArray(loaded)
+      ? loaded.filter((t) => !["TSK-01", "TSK-02", "TSK-03", "TSK-04"].includes(t.id))
+      : [];
+  });
 
-  const [projects, setProjectsState] = useState<InternProject[]>(() =>
-    getFromStorage("projects", INITIAL_PROJECTS)
-  );
+  const [projects, setProjectsState] = useState<InternProject[]>(() => {
+    const loaded = getFromStorage("projects", INITIAL_PROJECTS);
+    return Array.isArray(loaded)
+      ? loaded.filter((p) => !["PRJ-01", "PRJ-02", "PRJ-03"].includes(p.id))
+      : [];
+  });
 
-  const [schedule, setScheduleState] = useState<ScheduleItem[]>(() =>
-    getFromStorage("schedule", INITIAL_SCHEDULE)
-  );
+  const [schedule, setScheduleState] = useState<ScheduleItem[]>(() => {
+    const loaded = getFromStorage("schedule", INITIAL_SCHEDULE);
+    return Array.isArray(loaded)
+      ? loaded.filter((s) => !["SCH-01", "SCH-02", "SCH-03"].includes(s.id))
+      : [];
+  });
 
-  const [announcements, setAnnouncementsState] = useState<AnnouncementItem[]>(() =>
-    getFromStorage("announcements", INITIAL_ANNOUNCEMENTS)
-  );
+  const [announcements, setAnnouncementsState] = useState<AnnouncementItem[]>(() => {
+    const loaded = getFromStorage("announcements", INITIAL_ANNOUNCEMENTS);
+    return Array.isArray(loaded)
+      ? loaded.filter((a) => !["ANN-01", "ANN-02", "ANN-03"].includes(a.id))
+      : [];
+  });
 
-  const [activities, setActivitiesState] = useState<ActivityItem[]>(() =>
-    getFromStorage("activities", INITIAL_ACTIVITIES)
-  );
+  const [activities, setActivitiesState] = useState<ActivityItem[]>(() => {
+    const loaded = getFromStorage("activities", INITIAL_ACTIVITIES);
+    return Array.isArray(loaded)
+      ? loaded.filter((a) => !["ACT-01", "ACT-02", "ACT-03"].includes(a.id))
+      : [];
+  });
 
   const [attendance, setAttendanceState] = useState<AttendanceDay[]>(() =>
     getFromStorage("attendance", INITIAL_ATTENDANCE)

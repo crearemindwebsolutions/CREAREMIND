@@ -115,24 +115,19 @@ export const INITIAL_INTERN_PROFILE: InternProfile = {
   phone: "—",
   college: "—",
   department: "Creare Mind Engineering",
-  role: "Intern Engineer",
+  role: "Intern",
   company: "Creare Mind Studio",
   startDate: "—",
   endDate: "—",
   mentorName: "Gowthaman PR",
   mentorRole: "Head of Engineering & Founder",
   mentorEmail: "gowthamandharshan4@gmail.com",
-  bio: "Engineering Intern contributing to Creare Mind software systems and digital platforms.",
+  bio: "",
   githubUrl: "",
   linkedinUrl: "",
   portfolioUrl: "https://crearemind.in",
   emergencyContact: "—",
-  skills: [
-    "React",
-    "TypeScript",
-    "Tailwind CSS",
-    "Git",
-  ],
+  skills: [],
 };
 
 export function createInitialProfile(
@@ -161,19 +156,19 @@ export function createInitialProfile(
     phone: phone && phone !== "—" ? phone : "—",
     college: internDetails?.college || "—",
     department: internDetails?.department || "Creare Mind Engineering",
-    role: internDetails?.roleTitle || "Intern Engineer",
+    role: internDetails?.roleTitle || "Intern",
     company: company || "Creare Mind Studio",
     startDate: internDetails?.startDate || "—",
     endDate: internDetails?.endDate || "—",
     mentorName: internDetails?.mentorName || "Gowthaman PR",
     mentorRole: "Head of Engineering & Founder",
     mentorEmail: "gowthamandharshan4@gmail.com",
-    bio: "Engineering Intern contributing to Creare Mind software systems and digital platforms.",
+    bio: "",
     githubUrl: "",
     linkedinUrl: "",
     portfolioUrl: "https://crearemind.in",
     emergencyContact: "—",
-    skills: ["React", "TypeScript", "Tailwind CSS", "Git"],
+    skills: [],
   };
 }
 
@@ -190,59 +185,4 @@ export const INITIAL_ACTIVITIES: ActivityItem[] = [];
 
 export const INITIAL_ATTENDANCE: AttendanceDay[] = [];
 
-export const INITIAL_RESOURCES: ResourceItem[] = [
-  {
-    id: "RES-01",
-    title: "Creare Mind Engineering Handbook & Standards",
-    category: "Guidelines",
-    format: "PDF",
-    sizeOrDuration: "2.4 MB",
-    description: "Core coding guidelines, Git workflow, branch naming, review process, and code quality standards.",
-    url: "#",
-  },
-  {
-    id: "RES-02",
-    title: "React 19 & TanStack Start Architectural Blueprint",
-    category: "Engineering",
-    format: "Doc",
-    sizeOrDuration: "18 pages",
-    description: "Deep dive into server-side streaming, TanStack Router file-based routing, and Supabase client patterns.",
-    url: "#",
-  },
-  {
-    id: "RES-03",
-    title: "Creare Mind Design System & Figma Token Library",
-    category: "Design",
-    format: "Figma",
-    sizeOrDuration: "v3.2 Spec",
-    description: "Component tokens, color palettes, spacing matrix, typography scales, and Lucide icon usage.",
-    url: "#",
-  },
-  {
-    id: "RES-04",
-    title: "POS Billing System Architecture Walkthrough",
-    category: "Videos",
-    format: "Video",
-    sizeOrDuration: "28 min",
-    description: "Founder walkthrough explaining offline SQLite synchronization, ESC/POS printing, and barcode processing.",
-    url: "#",
-  },
-  {
-    id: "RES-05",
-    title: "Tailwind CSS v4 Utility Guide & Layout Patterns",
-    category: "Engineering",
-    format: "Doc",
-    sizeOrDuration: "12 pages",
-    description: "Best practices for CSS variables, custom breakpoints, dark/light theme tokens, and kinetic micro-animations.",
-    url: "#",
-  },
-  {
-    id: "RES-06",
-    title: "Internship Milestones & Evaluation Rubric",
-    category: "Guidelines",
-    format: "PDF",
-    sizeOrDuration: "1.1 MB",
-    description: "Complete breakdown of bi-weekly sprint reviews, performance scoring criteria, and stipend progression.",
-    url: "#",
-  },
-];
+export const INITIAL_RESOURCES: ResourceItem[] = [];

@@ -164,7 +164,7 @@ export function InternBottomBar({
                 </span>
               </div>
               <p className="text-xs text-neutral-600 leading-relaxed">
-                Offer Letter reference <strong>CM-INT-2026-042</strong> has been digitally signed and ratified by Creare Mind core engineering leadership.
+                Offer Letter reference <strong>CM-INT-{profile.id || "00000000"}</strong> has been digitally signed and ratified by Creare Mind core engineering leadership.
               </p>
             </div>
 
@@ -197,7 +197,7 @@ export function InternBottomBar({
                   Close
                 </button>
                 <button
-                  onClick={() => alert("Downloading signed Offer Letter PDF (CM-INT-2026-042.pdf)...")}
+                  onClick={() => alert(`Downloading signed Offer Letter PDF (CM-INT-${profile.id || "00000000"}.pdf)...`)}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs cursor-pointer"
                 >
                   <Download className="h-3.5 w-3.5" />
