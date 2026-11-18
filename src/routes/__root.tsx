@@ -24,6 +24,21 @@ import { SCHEMA_ORGANIZATION, SITE_URL, DEFAULT_OG_IMAGE } from "../lib/seo";
 import { useSession } from "../hooks/use-session";
 import { syncSessionUserToCloud } from "../lib/admin-users";
 
+// Catch chunk load failures across new deployments and automatically reload with newest assets
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    console.warn("Vite preload error detected. Reloading page to load latest version...", event);
+    const reloadKey = "chunk_preload_reload";
+    const last = sessionStorage.getItem(reloadKey);
+    const now = Date.now();
+    if (!last || now - Number(last) > 8000) {
+      sessionStorage.setItem(reloadKey, String(now));
+      window.location.reload();
+    }
+  });
+}
+
 function GlobalUserSessionSync() {
   const { user } = useSession();
   useEffect(() => {
@@ -65,6 +80,20 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
+  const isChunkError = /dynamically imported module|failed to fetch dynamically imported module|loading chunk|failed to fetch/i.test(errorMessage);
+
+  // Auto reload once on chunk mismatch across deployments
+  useEffect(() => {
+    if (isChunkError && typeof window !== "undefined") {
+      const reloadKey = "root_chunk_error_reload";
+      const last = sessionStorage.getItem(reloadKey);
+      const now = Date.now();
+      if (!last || now - Number(last) > 8000) {
+        sessionStorage.setItem(reloadKey, String(now));
+        window.location.reload();
+      }
+    }
+  }, [isChunkError]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
@@ -86,8 +115,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              if (isChunkError && typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                router.invalidate();
+                reset();
+              }
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >

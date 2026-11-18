@@ -133,6 +133,21 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
   pendingComponent: AdminSkeleton,
   errorComponent: ({ error, reset }) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isChunkError = /dynamically imported module|failed to fetch dynamically imported module|loading chunk|failed to fetch/i.test(errorMessage);
+
+    useEffect(() => {
+      if (isChunkError && typeof window !== "undefined") {
+        const reloadKey = "admin_chunk_error_reload";
+        const last = sessionStorage.getItem(reloadKey);
+        const now = Date.now();
+        if (!last || now - Number(last) > 8000) {
+          sessionStorage.setItem(reloadKey, String(now));
+          window.location.reload();
+        }
+      }
+    }, [isChunkError]);
+
     return (
       <div className="min-h-screen bg-[#F8F7F4] text-neutral-900 grid place-items-center p-6">
         <div className="max-w-md w-full rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl text-center">
@@ -144,23 +159,39 @@ export const Route = createFileRoute("/admin")({
             An issue occurred while loading administrative records.
           </p>
           <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-left text-xs font-mono text-red-600 overflow-auto max-h-40">
-            {error instanceof Error ? error.message : String(error)}
+            {errorMessage}
           </div>
           <div className="mt-5 flex gap-2 justify-center">
             <button
               onClick={() => {
-                localStorage.removeItem("creare_admin_users_list");
-                localStorage.removeItem("creare_admin_projects");
-                localStorage.removeItem("creare_admin_invoices");
-                localStorage.removeItem("creare_client_inquiries");
-                window.location.reload();
+                if (typeof window !== "undefined") {
+                  try {
+                    localStorage.removeItem("creare_admin_users_list");
+                    localStorage.removeItem("creare_admin_projects");
+                    localStorage.removeItem("creare_admin_invoices");
+                    localStorage.removeItem("creare_client_inquiries");
+                    sessionStorage.clear();
+                    if ("caches" in window) {
+                      caches.keys().then((names) => {
+                        for (const name of names) caches.delete(name);
+                      });
+                    }
+                  } catch {}
+                  window.location.href = window.location.pathname + "?t=" + Date.now();
+                }
               }}
               className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors"
             >
               Reset Cache &amp; Reload
             </button>
             <button
-              onClick={() => reset()}
+              onClick={() => {
+                if (isChunkError && typeof window !== "undefined") {
+                  window.location.reload();
+                } else {
+                  reset();
+                }
+              }}
               className="px-4 py-2 border border-neutral-200 bg-white text-neutral-700 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
             >
               Try Again
@@ -195,13 +226,26 @@ function AdminPage() {
   const { user, ready } = useSession();
   const navigate = useNavigate();
   const [asyncRole, setAsyncRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.email) return;
-    if (isAdmin(user)) return;
-    getUserRoleAsync(user.email).then((role) => {
-      setAsyncRole(role);
-    });
+    if (!user?.email) {
+      setRoleLoading(false);
+      return;
+    }
+    if (isAdmin(user)) {
+      setAsyncRole("Super Admin");
+      setRoleLoading(false);
+      return;
+    }
+    setRoleLoading(true);
+    getUserRoleAsync(user.email)
+      .then((role) => {
+        setAsyncRole(role);
+      })
+      .finally(() => {
+        setRoleLoading(false);
+      });
   }, [user?.email]);
 
   const userIsAdmin = isAdmin(user) || asyncRole === "Super Admin" || asyncRole === "Admin";
@@ -510,7 +554,7 @@ function AdminPage() {
           : "Email / Password"
       ) as ManagedUser["provider"];
 
-      const realRole = isAdmin(user) ? "Super Admin" : "Customer";
+      const realRole = (asyncRole as any) || (isAdmin(user) ? "Super Admin" : "Customer");
       const realJoinDate = user.created_at
         ? new Date(user.created_at).toLocaleDateString("en-GB", {
             day: "2-digit",
@@ -549,7 +593,7 @@ function AdminPage() {
         return sanitized;
       }
     });
-  }, [user]);
+  }, [user, asyncRole]);
 
   // Add / Edit user modals
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -616,7 +660,7 @@ function AdminPage() {
 
     const updated = [createdUser, ...usersList];
     saveUsersList(updated);
-    saveUserToCloud(createdUser).catch(() => {});
+    await saveUserToCloud(createdUser);
     recordAdminLog(user?.email || "admin@crearemind.in", "Created Customer", "Users", `Added account ${createdUser.name} (${createdUser.id})`);
     toast.success(
       createdUser.role === "Intern"
@@ -965,7 +1009,7 @@ function AdminPage() {
   };
 
   // 1. Loading State (Light Theme)
-  if (!ready) {
+  if (!ready || (user && !isAdmin(user) && roleLoading)) {
     return <AdminSkeleton />;
   }
 
@@ -1945,26 +1989,42 @@ function AdminPage() {
                               {/* 6. Account Role */}
                               <td className="py-3.5 px-4 whitespace-nowrap">
                                 <div className="inline-flex items-center gap-1.5">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleRoleChange(u.id, e.target.value as ManagedUser["role"])}
+                                    disabled={ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer border transition-colors outline-none shadow-2xs ${
                                       u.role === "Super Admin"
-                                        ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                        ? "bg-purple-100 text-purple-900 border-purple-300 hover:bg-purple-200"
                                         : u.role === "Admin"
-                                        ? "bg-neutral-900 text-white border border-neutral-800"
+                                        ? "bg-neutral-900 text-white border-neutral-800 hover:bg-neutral-800"
                                         : u.role === "Intern"
-                                        ? "bg-emerald-50 text-emerald-800 border border-emerald-300 font-black"
-                                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                                        ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                        : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                                    } ${
+                                      ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())
+                                        ? "cursor-not-allowed opacity-80"
+                                        : ""
                                     }`}
+                                    title={
+                                      ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())
+                                        ? "Primary founder role is permanent"
+                                        : `Change role for ${u.name}`
+                                    }
                                   >
-                                    {u.role === "Super Admin" || u.role === "Admin" ? (
-                                      <ShieldCheck className="w-3 h-3" />
-                                    ) : u.role === "Intern" ? (
-                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    ) : (
-                                      <UserCheck className="w-3 h-3" />
-                                    )}
-                                    <span>{u.role}</span>
-                                  </span>
+                                    <option value="Super Admin" className="bg-white text-neutral-900">
+                                      🛡️ Super Admin
+                                    </option>
+                                    <option value="Admin" className="bg-white text-neutral-900">
+                                      ⚡ Admin
+                                    </option>
+                                    <option value="Intern" className="bg-white text-neutral-900">
+                                      🌱 Intern
+                                    </option>
+                                    <option value="Customer" className="bg-white text-neutral-900">
+                                      👤 Customer
+                                    </option>
+                                  </select>
                                 </div>
                               </td>
 

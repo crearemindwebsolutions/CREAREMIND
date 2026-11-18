@@ -64,6 +64,23 @@ const DUMMY_EMAILS = new Set([
 ]);
 
 /**
+ * Filter out any mock, sample, or dummy test users from all directories
+ */
+export function isDemoOrDummyEmail(email?: string): boolean {
+  if (!email) return true;
+  const clean = email.trim().toLowerCase();
+  if (DUMMY_EMAILS.has(clean)) return true;
+  if (clean.startsWith("testgoogleuser")) return true;
+  if (clean.includes("example.com")) return true;
+  if (clean.includes("quickcartpos.com")) return true;
+  if (clean.includes("aetherstudio.design")) return true;
+  if (clean.includes("luminuxeskincare.com")) return true;
+  if (clean.includes("verveoptics.it")) return true;
+  if (clean.includes("dummy") || clean.includes("sample")) return true;
+  return false;
+}
+
+/**
  * Normalizes email address to clean key for Supabase record identification
  */
 export function getEmailStorageKey(email: string): string {
@@ -94,7 +111,7 @@ export function sanitizeAndDedupeUsers(list: ManagedUser[]): ManagedUser[] {
     const emailKey = String(u.email || "").trim().toLowerCase();
     if (!emailKey) continue;
     if ((u as any).isDeleted || (u as any).role === "Deleted") continue;
-    if (DUMMY_EMAILS.has(emailKey) || emailKey.startsWith("testgoogleuser")) continue;
+    if (isDemoOrDummyEmail(emailKey)) continue;
     if (seenEmails.has(emailKey)) continue;
     seenEmails.add(emailKey);
 
@@ -158,7 +175,12 @@ export function getStoredUsers(): ManagedUser[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return sanitizeAndDedupeUsers(parsed);
+        const cleaned = sanitizeAndDedupeUsers(parsed);
+        // If dummy accounts were stripped, immediately save the purged clean list to localStorage
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+        }
+        return cleaned;
       }
     }
   } catch (e) {
@@ -218,7 +240,7 @@ export async function fetchUsersFromCloud(): Promise<ManagedUser[]> {
     const deletedEmails = new Set<string>();
 
     for (const [emailKey, rows] of rowsByEmail.entries()) {
-      if (DUMMY_EMAILS.has(emailKey) || emailKey.startsWith("testgoogleuser")) continue;
+      if (isDemoOrDummyEmail(emailKey)) continue;
 
       // Authoritative: Inspect the NEWEST record for this email
       const newest = rows[0];
@@ -233,14 +255,14 @@ export async function fetchUsersFromCloud(): Promise<ManagedUser[]> {
       }
     }
 
-    // Filter localUsers to purge deleted accounts from browser storage
+    // Filter localUsers to purge deleted accounts and demo accounts from browser storage
     const localUsers = getStoredUsers().filter(
-      (u) => !deletedEmails.has(u.email.trim().toLowerCase()) && !DUMMY_EMAILS.has(u.email.trim().toLowerCase())
+      (u) => !deletedEmails.has(u.email.trim().toLowerCase()) && !isDemoOrDummyEmail(u.email.trim().toLowerCase())
     );
 
     // Combine cloud users, purged local users, and default admin accounts
     const combined = sanitizeAndDedupeUsers([...cloudUsers, ...localUsers, ...DEFAULT_MANAGED_USERS]).filter(
-      (u) => !deletedEmails.has(u.email.trim().toLowerCase())
+      (u) => !deletedEmails.has(u.email.trim().toLowerCase()) && !isDemoOrDummyEmail(u.email.trim().toLowerCase())
     );
 
     saveUsersToLocalStorage(combined);
@@ -258,6 +280,7 @@ export async function saveUserToCloud(user: ManagedUser): Promise<boolean> {
   if (!user || !user.email) return false;
   try {
     const cleanEmail = user.email.trim().toLowerCase();
+    if (isDemoOrDummyEmail(cleanEmail)) return false;
     const publicId = getEmailStorageKey(cleanEmail);
     const normalizedUser: ManagedUser = {
       ...user,
@@ -294,12 +317,14 @@ export async function saveUserToCloud(user: ManagedUser): Promise<boolean> {
 /**
  * Syncs any authenticated Supabase session user into the cloud user directory.
  * Guaranteed to be called when ANY user logs in, signs up, or visits their profile.
- * CRITICAL: Never downgrades an appointed Intern, Admin, or Super Admin to Customer.
+ * CRITICAL: Preserves whatever role the Super Admin appointed in the cloud (Admin, Super Admin, Intern, Customer).
  */
 export async function syncSessionUserToCloud(user: User, fallbackName?: string): Promise<ManagedUser | null> {
   if (!user || !user.email) return null;
 
   const email = user.email.trim().toLowerCase();
+  if (isDemoOrDummyEmail(email)) return null;
+
   let realName = (
     (user.user_metadata?.full_name as string) ||
     (user.user_metadata?.name as string) ||
@@ -328,11 +353,8 @@ export async function syncSessionUserToCloud(user: User, fallbackName?: string):
       : "Email / Password"
   ) as ManagedUser["provider"];
 
-  // Check locally first
-  const existingUsers = getStoredUsers();
-  let existingUser = existingUsers.find((u) => u.email.toLowerCase() === email);
-
-  // Authoritative check against Supabase cloud to never downgrade or lose an appointed role
+  // Authoritative check against Supabase cloud to determine the user's latest appointed role & record
+  let cloudUser: (ManagedUser & { isDeleted?: boolean }) | null = null;
   try {
     const pubId = getEmailStorageKey(email);
     const { data } = await supabasePublic
@@ -343,28 +365,40 @@ export async function syncSessionUserToCloud(user: User, fallbackName?: string):
       .order("created_at", { ascending: false });
 
     if (data && data.length > 0) {
-      try {
-        const newest = JSON.parse(data[0].url) as ManagedUser & { isDeleted?: boolean };
-        if (newest && !newest.isDeleted && (newest as any).role !== "Deleted") {
-          existingUser = newest;
-        }
-      } catch {}
+      for (const row of data) {
+        try {
+          const parsed = JSON.parse(row.url) as ManagedUser & { isDeleted?: boolean };
+          if (parsed && parsed.email?.toLowerCase() === email) {
+            cloudUser = parsed;
+            break; // Authoritative newest row
+          }
+        } catch {}
+      }
     }
   } catch (err) {
     console.warn("Could not check cloud role in syncSessionUserToCloud:", err);
   }
 
-  // Preserve elevated role assigned by admin (e.g. Intern, Admin, Super Admin)
+  const existingLocal = getStoredUsers().find((u) => u.email.toLowerCase() === email);
+
+  // Authoritative role resolution:
+  // 1. Primary founder accounts always Super Admin
+  // 2. Authoritative role set by Super Admin in cloud database (Super Admin, Admin, Intern, Customer)
+  // 3. User metadata / local fallback
   let realRole: ManagedUser["role"] = "Customer";
-  if (isAdmin(user) || ADMIN_EMAILS.some((a) => a.toLowerCase() === email)) {
+  if (ADMIN_EMAILS.slice(0, 2).some((a) => a.toLowerCase() === email)) {
     realRole = "Super Admin";
-  } else if (existingUser?.role === "Super Admin" || existingUser?.role === "Admin" || existingUser?.role === "Intern") {
-    realRole = existingUser.role;
-  } else if (user.user_metadata?.role === "intern" || user.user_metadata?.role === "Intern") {
+  } else if (cloudUser && cloudUser.role && !cloudUser.isDeleted && (cloudUser as any).role !== "Deleted") {
+    realRole = cloudUser.role;
+  } else if (existingLocal?.role && existingLocal.role !== "Customer") {
+    realRole = existingLocal.role;
+  } else if (user.user_metadata?.role === "admin" || user.app_metadata?.role === "admin") {
+    realRole = "Admin";
+  } else if (user.user_metadata?.role === "intern" || user.app_metadata?.role === "intern") {
     realRole = "Intern";
   }
 
-  const realJoinDate = existingUser?.joinedDate || (user.created_at
+  const realJoinDate = cloudUser?.joinedDate || existingLocal?.joinedDate || (user.created_at
     ? new Date(user.created_at).toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
@@ -372,32 +406,35 @@ export async function syncSessionUserToCloud(user: User, fallbackName?: string):
       })
     : "Recently");
 
-  const real8DigitId = existingUser?.id || format8DigitUserId(user.id || email);
+  const real8DigitId = cloudUser?.id || existingLocal?.id || format8DigitUserId(user.id || email);
 
   const managedUser: ManagedUser = {
     id: real8DigitId,
-    name: realName,
+    name: realName || cloudUser?.name || existingLocal?.name || "User",
     email,
-    phone: realPhone || existingUser?.phone || "—",
+    phone: (realPhone && realPhone !== "—") ? realPhone : (cloudUser?.phone || existingLocal?.phone || "—"),
     provider: realProvider,
     role: realRole,
     joinedDate: realJoinDate,
-    company: existingUser?.company,
-    avatarUrl: existingUser?.avatarUrl,
-    internDetails: existingUser?.internDetails,
+    company: cloudUser?.company || existingLocal?.company,
+    avatarUrl: cloudUser?.avatarUrl || existingLocal?.avatarUrl,
+    internDetails: cloudUser?.internDetails || existingLocal?.internDetails,
   };
 
-  // Only upload to cloud if user is brand new or if phone/name updated, but NEVER downgrade elevated role
-  const shouldSave =
-    !existingUser ||
-    (existingUser.role !== realRole && realRole !== "Customer") ||
-    (realPhone && realPhone !== "—" && existingUser.phone !== realPhone);
+  // Always update local cache so isAdmin(user) and other sync checks instantly see the authoritative role!
+  const current = getStoredUsers();
+  const updated = sanitizeAndDedupeUsers([
+    managedUser,
+    ...current.filter((u) => u.email.toLowerCase() !== email),
+  ]);
+  saveUsersToLocalStorage(updated);
 
-  if (shouldSave) {
+  // If the user has never been recorded in the cloud database, persist them now
+  if (!cloudUser) {
     try {
       await saveUserToCloud(managedUser);
     } catch (err) {
-      console.warn("Background user cloud sync error:", err);
+      console.warn("Initial user cloud sync error:", err);
     }
   }
 
@@ -410,7 +447,9 @@ export async function syncSessionUserToCloud(user: User, fallbackName?: string):
 export async function getUserRoleAsync(email: string): Promise<"Super Admin" | "Admin" | "Intern" | "Customer"> {
   if (!email) return "Customer";
   const safeEmail = email.trim().toLowerCase();
-  if (ADMIN_EMAILS.some((a) => a.toLowerCase() === safeEmail)) {
+  if (isDemoOrDummyEmail(safeEmail)) return "Customer";
+
+  if (ADMIN_EMAILS.slice(0, 2).some((a) => a.toLowerCase() === safeEmail)) {
     return "Super Admin";
   }
 
@@ -424,15 +463,19 @@ export async function getUserRoleAsync(email: string): Promise<"Super Admin" | "
       .order("created_at", { ascending: false });
 
     if (data && data.length > 0) {
-      try {
-        const newest = JSON.parse(data[0].url || "{}") as any;
-        if (newest?.isDeleted || newest?.role === "Deleted") {
-          return "Customer";
-        }
-        if (newest?.role) {
-          return newest.role;
-        }
-      } catch {}
+      for (const row of data) {
+        try {
+          const parsed = JSON.parse(row.url || "{}") as any;
+          if (parsed && parsed.email?.toLowerCase() === safeEmail) {
+            if (parsed.isDeleted || parsed.role === "Deleted") {
+              return "Customer";
+            }
+            if (parsed.role) {
+              return parsed.role;
+            }
+          }
+        } catch {}
+      }
     }
   } catch (err) {
     console.warn("Error getting user role async:", err);
