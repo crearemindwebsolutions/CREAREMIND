@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { syncSessionUserToCloud, saveUserToCloud, getUserRoleAsync } from "@/lib/admin-users";
+import { syncSessionUserToCloud, saveUserToCloud, getUserRoleAsync, isUserAccountRevoked } from "@/lib/admin-users";
 import { format8DigitUserId } from "@/lib/user-id";
 import { ClipboardPaste, Eye, EyeOff, Check } from "lucide-react";
 import {
@@ -240,6 +240,16 @@ function AuthPage() {
         }
       }
     } else {
+      const isRevoked = await isUserAccountRevoked(email.trim().toLowerCase());
+      if (isRevoked) {
+        setBusy(false);
+        setMsg({
+          ok: false,
+          t: "This account was removed by the administrator. Please click 'Create an account' below to register a new account.",
+        });
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,

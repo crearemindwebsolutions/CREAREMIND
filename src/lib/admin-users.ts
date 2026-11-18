@@ -315,15 +315,73 @@ export async function saveUserToCloud(user: ManagedUser): Promise<boolean> {
 }
 
 /**
+ * Checks whether an account has been deleted / revoked by the administrator in the cloud.
+ */
+export async function isUserAccountRevoked(email?: string): Promise<boolean> {
+  if (!email) return false;
+  const clean = email.trim().toLowerCase();
+
+  // Primary founders can never be revoked
+  if (ADMIN_EMAILS.slice(0, 2).some((a) => a.toLowerCase() === clean)) {
+    return false;
+  }
+
+  try {
+    const pubId = getEmailStorageKey(clean);
+    const { data } = await supabasePublic
+      .from("media")
+      .select("url, original_filename, created_at")
+      .eq("resource_type", "user_account")
+      .or(`public_id.eq.${pubId},original_filename.ilike.%${clean}%`)
+      .order("created_at", { ascending: false });
+
+    if (data && data.length > 0) {
+      for (const row of data) {
+        try {
+          const parsed = JSON.parse(row.url || "{}");
+          const rowEmail = (parsed.email || row.original_filename?.replace("DELETED_", "") || "").trim().toLowerCase();
+          if (rowEmail === clean) {
+            if (parsed.isDeleted || parsed.role === "Deleted" || row.original_filename?.startsWith("DELETED_")) {
+              return true;
+            }
+            return false;
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to check if user account is revoked:", e);
+  }
+  return false;
+}
+
+/**
  * Syncs any authenticated Supabase session user into the cloud user directory.
  * Guaranteed to be called when ANY user logs in, signs up, or visits their profile.
- * CRITICAL: Preserves whatever role the Super Admin appointed in the cloud (Admin, Super Admin, Intern, Customer).
+ * CRITICAL: If account was deleted by admin, forces immediate logout and cancels sync.
  */
 export async function syncSessionUserToCloud(user: User, fallbackName?: string): Promise<ManagedUser | null> {
   if (!user || !user.email) return null;
 
   const email = user.email.trim().toLowerCase();
   if (isDemoOrDummyEmail(email)) return null;
+
+  // 1. If account was revoked/deleted by admin, force logout immediately
+  const isRevoked = await isUserAccountRevoked(email);
+  if (isRevoked) {
+    console.warn(`User ${email} was deleted by admin. Force signing out.`);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      await supabase.auth.signOut().catch(() => {});
+    } catch {}
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("creare_dev_session");
+      const current = getStoredUsers().filter((u) => u.email.toLowerCase() !== email);
+      saveUsersToLocalStorage(current);
+      window.dispatchEvent(new CustomEvent("creare_session_revoked", { detail: email }));
+    }
+    return null;
+  }
 
   let realName = (
     (user.user_metadata?.full_name as string) ||
@@ -486,24 +544,39 @@ export async function getUserRoleAsync(email: string): Promise<"Super Admin" | "
 }
 
 /**
- * Permanently deletes a user from cloud database and local cache
+ * Permanently deletes a user from cloud database and local cache.
+ * Inserts a durable revocation tombstone so any active session for this user is force-logged out.
  */
 export async function deleteUserFromCloud(userId: string, email: string): Promise<boolean> {
   try {
-    const publicId = getEmailStorageKey(email);
-    // Insert tombstone to propagate deletion across all devices
+    const cleanEmail = email.trim().toLowerCase();
+    const publicId = getEmailStorageKey(cleanEmail);
+
+    // Insert tombstone to propagate deletion across all devices and prevent resurrection
     await supabasePublic.from("media").insert({
       public_id: publicId,
       resource_type: "user_account",
-      url: JSON.stringify({ email, isDeleted: true, id: userId, role: "Deleted" }),
-      original_filename: `DELETED_${email}`,
+      url: JSON.stringify({ email: cleanEmail, isDeleted: true, id: userId, role: "Deleted" }),
+      original_filename: `DELETED_${cleanEmail}`,
     });
 
     const current = getStoredUsers();
     const updated = current.filter(
-      (u) => u.id !== userId && u.email.toLowerCase() !== email.toLowerCase()
+      (u) => u.id !== userId && u.email.toLowerCase() !== cleanEmail
     );
     saveUsersToLocalStorage(updated);
+
+    // Broadcast account deletion so any active tab/browser for this user force signs out immediately
+    try {
+      const bc = new BroadcastChannel("creare_admin_channel");
+      bc.postMessage({ type: "account_deleted", email: cleanEmail });
+      bc.close();
+    } catch {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("creare_account_deleted", { detail: cleanEmail }));
+    }
+
     return true;
   } catch (err) {
     console.warn("Failed to delete user from Supabase cloud:", err);

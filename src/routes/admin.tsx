@@ -696,7 +696,7 @@ function AdminPage() {
     if (confirm(`Are you sure you want to remove user "${name}" (${id})?`)) {
       const updated = usersList.filter((u) => u.id !== id);
       saveUsersList(updated);
-      deleteUserFromCloud(id, target.email).catch(() => {});
+      await deleteUserFromCloud(id, target.email);
       recordAdminLog(user?.email || "admin@crearemind.in", "Deleted Customer", "Users", `Removed account ${name} (${id})`);
       toast.success(`Removed user ${name}.`);
     }
@@ -1134,7 +1134,7 @@ function AdminPage() {
         <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link to="/" className="text-sm font-bold tracking-tight text-neutral-900 hover:opacity-80 transition-opacity flex items-center gap-2.5">
-              <LogoMark className="h-[18px] w-auto shrink-0" />
+              <LogoMark variant="black" className="h-[18px] w-auto shrink-0" />
               <span className="font-mono text-xs uppercase tracking-widest text-neutral-900 font-bold">CREARE MIND</span>
             </Link>
             <span className="h-4 w-px bg-neutral-200" />

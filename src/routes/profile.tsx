@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
-import { syncSessionUserToCloud, getUserRoleAsync } from "@/lib/admin-users";
+import { syncSessionUserToCloud, getUserRoleAsync, isUserAccountRevoked } from "@/lib/admin-users";
 import { ProfileSkeleton } from "@/components/ui/SiteSkeletons";
 import {
   User,
@@ -93,14 +93,22 @@ function ProfilePage() {
   const [currentUserRole, setCurrentUserRole] = useState<"Super Admin" | "Admin" | "Intern" | "Customer">("Customer");
   const [, setRoleLoading] = useState(true);
 
-  // Authoritatively load user's appointed role directly from database
+  // Authoritatively load user's appointed role directly from database & check revocation
   useEffect(() => {
     if (!user?.email) return;
-    getUserRoleAsync(user.email).then((role) => {
-      setCurrentUserRole(role);
-      setRoleLoading(false);
+    isUserAccountRevoked(user.email).then(async (revoked) => {
+      if (revoked) {
+        await supabase.auth.signOut().catch(() => {});
+        localStorage.removeItem("creare_dev_session");
+        navigate({ to: "/auth" });
+        return;
+      }
+      getUserRoleAsync(user.email!).then((role) => {
+        setCurrentUserRole(role);
+        setRoleLoading(false);
+      });
     });
-  }, [user?.email]);
+  }, [user?.email, navigate]);
 
   const isIntern = currentUserRole === "Intern";
   const isElevatedAdmin = userIsAdmin || currentUserRole === "Super Admin" || currentUserRole === "Admin";

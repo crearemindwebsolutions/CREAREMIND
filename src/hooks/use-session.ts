@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { syncSessionUserToCloud } from "@/lib/admin-users";
+import { syncSessionUserToCloud, isUserAccountRevoked, getStoredUsers, saveUsersToLocalStorage } from "@/lib/admin-users";
 
 /** Current auth session; `ready` is false until the first check finishes. */
 export function useSession() {
@@ -25,12 +25,24 @@ export function useSession() {
 
     const handleUserSync = (sess: Session | null) => {
       if (sess?.user && sess.user.email) {
-        // Automatically sync registered user to Supabase cloud directory in background
-        setTimeout(() => {
+        const email = sess.user.email.trim().toLowerCase();
+        isUserAccountRevoked(email).then(async (revoked) => {
+          if (revoked) {
+            console.warn(`Session for revoked/deleted user ${email} detected. Force signing out.`);
+            await supabase.auth.signOut().catch(() => {});
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("creare_dev_session");
+              const current = getStoredUsers().filter((u) => u.email.toLowerCase() !== email);
+              saveUsersToLocalStorage(current);
+            }
+            setSession(null);
+            return;
+          }
+          // Not revoked -> sync normally
           syncSessionUserToCloud(sess.user).catch((e) => {
             console.warn("Auto-sync user to cloud failed:", e);
           });
-        }, 500);
+        });
       }
     };
 
@@ -47,7 +59,43 @@ export function useSession() {
       handleUserSync(active);
     });
 
-    return () => data.subscription.unsubscribe();
+    // Listen for cross-tab account deletion broadcasts
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("creare_admin_channel");
+      bc.onmessage = async (event) => {
+        if (event.data?.type === "account_deleted" && event.data.email) {
+          const deleted = String(event.data.email).toLowerCase();
+          const currentEmail = session?.user?.email?.toLowerCase();
+          if (currentEmail && currentEmail === deleted) {
+            await supabase.auth.signOut().catch(() => {});
+            localStorage.removeItem("creare_dev_session");
+            setSession(null);
+            window.location.reload();
+          }
+        }
+      };
+    } catch {}
+
+    const handleRevokeEvent = async (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const currentEmail = session?.user?.email?.toLowerCase();
+      if (currentEmail && currentEmail === String(detail).toLowerCase()) {
+        await supabase.auth.signOut().catch(() => {});
+        localStorage.removeItem("creare_dev_session");
+        setSession(null);
+        window.location.reload();
+      }
+    };
+    window.addEventListener("creare_session_revoked", handleRevokeEvent);
+    window.addEventListener("creare_account_deleted", handleRevokeEvent);
+
+    return () => {
+      data.subscription.unsubscribe();
+      if (bc) bc.close();
+      window.removeEventListener("creare_session_revoked", handleRevokeEvent);
+      window.removeEventListener("creare_account_deleted", handleRevokeEvent);
+    };
   }, []);
 
   return { session, user: session?.user ?? null, ready };
