@@ -384,7 +384,7 @@ export function Header() {
               }`}
             >
               <span className="label-xs flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-white backdrop-blur-md">
-                <LogoMark className="h-4 w-4" /> {feature?.name}
+                <LogoMark className="h-4 w-auto" /> {feature?.name}
               </span>
             </div>
           </div>

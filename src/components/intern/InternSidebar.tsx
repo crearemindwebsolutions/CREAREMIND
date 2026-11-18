@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { InternProfile } from "@/lib/intern-data";
+import { LogoMark } from "@/components/site/Logo";
 
 export type InternNavTab =
   | "home"
@@ -95,9 +96,9 @@ export function InternSidebar({
             className="flex items-center gap-3 transition-opacity hover:opacity-85 min-w-0"
             onClick={onCloseMobile}
           >
-            {/* Creare Mind Hexagon / Box Logo in Signature Neutral-900 / Black */}
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-neutral-900 text-white shadow-xs shrink-0">
-              <span className="font-mono text-xs font-black tracking-tighter">CM</span>
+            {/* Creare Mind Logo in Signature Neutral-900 / Black */}
+            <div className="flex h-8 w-9 items-center justify-center rounded-xl bg-neutral-900 px-1 text-white shadow-xs shrink-0">
+              <LogoMark className="h-4 w-auto" />
             </div>
 
             <div className="min-w-0 flex-1">

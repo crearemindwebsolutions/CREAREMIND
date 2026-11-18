@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { LogoMark } from "@/components/site/Logo";
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -1079,6 +1080,9 @@ function AdminPage() {
         <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link to="/" className="text-sm font-bold tracking-tight text-neutral-900 hover:opacity-80 transition-opacity flex items-center gap-2">
+              <span className="inline-flex items-center justify-center rounded-lg bg-neutral-900 px-1.5 py-1">
+                <LogoMark className="h-3.5 w-auto" />
+              </span>
               <span className="font-mono text-xs uppercase tracking-widest text-neutral-900 font-bold">CREARE MIND</span>
             </Link>
             <span className="h-4 w-px bg-neutral-200" />
