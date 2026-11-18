@@ -640,7 +640,7 @@ function AdminPage() {
 
     const updated = usersList.map((u) => (u.id === editingUser.id ? editingUser : u));
     saveUsersList(updated);
-    saveUserToCloud(editingUser).catch(() => {});
+    await saveUserToCloud(editingUser);
     recordAdminLog(user?.email || "admin@crearemind.in", "Updated Customer", "Users", `Updated details for ${editingUser.name} (${editingUser.id})`);
     toast.success(`Updated details for ${editingUser.name}!`);
     setEditingUser(null);
@@ -664,7 +664,7 @@ function AdminPage() {
     const updatedUser = { ...target, role: newRole };
     const updated = usersList.map((u) => (u.id === id ? updatedUser : u));
     saveUsersList(updated);
-    saveUserToCloud(updatedUser).catch(() => {});
+    await saveUserToCloud(updatedUser);
     recordAdminLog(user?.email || "admin@crearemind.in", "Changed Role", "Users", `Changed role for ${target.name} to ${newRole}`);
     toast.success(`Updated role to ${newRole}!`);
   };

@@ -81,16 +81,15 @@ function getRoleRank(role?: string): number {
 }
 
 /**
- * Cleans list, removes dummy placeholders, dedupes by email, ensures 8-digit IDs
+ * Cleans list, removes dummy placeholders, dedupes by email, ensures 8-digit IDs.
+ * Preserves the authoritative order so that cloud updates take precedence.
  */
 export function sanitizeAndDedupeUsers(list: ManagedUser[]): ManagedUser[] {
-  // Sort so higher-privilege records (Super Admin, Admin, Intern) are processed first
-  const sorted = [...list].sort((a, b) => getRoleRank(b?.role) - getRoleRank(a?.role));
   const seenEmails = new Set<string>();
   const seenIds = new Set<string>();
   const cleaned: ManagedUser[] = [];
 
-  for (const u of sorted) {
+  for (const u of list) {
     if (!u) continue;
     const emailKey = String(u.email || "").trim().toLowerCase();
     if (!emailKey) continue;
@@ -121,7 +120,14 @@ export function sanitizeAndDedupeUsers(list: ManagedUser[]): ManagedUser[] {
         ? String(u.phone).trim()
         : defaultMeta?.phone || "—";
     const safeProvider = (u.provider || defaultMeta?.provider || "Email / Password") as ManagedUser["provider"];
-    const safeRole = (defaultMeta?.role || u.role || "Customer") as ManagedUser["role"];
+    
+    // Primary founders are always Super Admin to avoid accidental lock-out;
+    // for all other accounts, the appointed role takes absolute precedence.
+    const isPrimaryFounder = ADMIN_EMAILS.slice(0, 2).some((a) => a.toLowerCase() === emailKey);
+    const safeRole = isPrimaryFounder
+      ? "Super Admin"
+      : ((u.role || defaultMeta?.role || "Customer") as ManagedUser["role"]);
+
     const safeJoinedDate = String(u.joinedDate || defaultMeta?.joinedDate || "Recently").trim();
     const safeCompany = u.company ? String(u.company).trim() : defaultMeta?.company;
 
@@ -221,18 +227,9 @@ export async function fetchUsersFromCloud(): Promise<ManagedUser[]> {
         continue;
       }
 
-      // Prioritize highest assigned role among active non-deleted records
-      let chosen = newest;
-      const adminRow = rows.find((r) => !r.isDeleted && (r.role === "Super Admin" || r.role === "Admin"));
-      const internRow = rows.find((r) => !r.isDeleted && r.role === "Intern");
-      if (adminRow) {
-        chosen = adminRow;
-      } else if (internRow) {
-        chosen = internRow;
-      }
-
-      if (chosen && chosen.name && chosen.role) {
-        cloudUsers.push(chosen);
+      // The newest row contains the authoritative role and details saved by the admin
+      if (newest && newest.name && newest.role) {
+        cloudUsers.push(newest);
       }
     }
 
@@ -346,21 +343,12 @@ export async function syncSessionUserToCloud(user: User, fallbackName?: string):
       .order("created_at", { ascending: false });
 
     if (data && data.length > 0) {
-      for (const row of data) {
-        try {
-          const parsed = JSON.parse(row.url) as ManagedUser & { isDeleted?: boolean };
-          if (parsed?.isDeleted || (parsed as any)?.role === "Deleted") {
-            // Tombstone: stop scanning older rows
-            break;
-          }
-          if (parsed && (parsed.role === "Intern" || parsed.role === "Admin" || parsed.role === "Super Admin")) {
-            existingUser = parsed;
-            break;
-          } else if (!existingUser && parsed) {
-            existingUser = parsed;
-          }
-        } catch {}
-      }
+      try {
+        const newest = JSON.parse(data[0].url) as ManagedUser & { isDeleted?: boolean };
+        if (newest && !newest.isDeleted && (newest as any).role !== "Deleted") {
+          existingUser = newest;
+        }
+      } catch {}
     }
   } catch (err) {
     console.warn("Could not check cloud role in syncSessionUserToCloud:", err);
@@ -436,23 +424,15 @@ export async function getUserRoleAsync(email: string): Promise<"Super Admin" | "
       .order("created_at", { ascending: false });
 
     if (data && data.length > 0) {
-      // Check if newest record is a tombstone
       try {
         const newest = JSON.parse(data[0].url || "{}") as any;
         if (newest?.isDeleted || newest?.role === "Deleted") {
           return "Customer";
         }
+        if (newest?.role) {
+          return newest.role;
+        }
       } catch {}
-
-      // Find highest elevated role
-      for (const row of data) {
-        try {
-          const parsed = JSON.parse(row.url) as any;
-          if (parsed && (parsed.role === "Super Admin" || parsed.role === "Admin" || parsed.role === "Intern")) {
-            return parsed.role;
-          }
-        } catch {}
-      }
     }
   } catch (err) {
     console.warn("Error getting user role async:", err);
