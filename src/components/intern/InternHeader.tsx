@@ -13,6 +13,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  Lock,
   ExternalLink,
   Share2,
 } from "lucide-react";
@@ -28,6 +29,7 @@ interface InternHeaderProps {
   onMarkAnnouncementRead: (id: string) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
+  onLockWorkspace?: () => void;
 }
 
 export function InternHeader({
@@ -39,6 +41,7 @@ export function InternHeader({
   onMarkAnnouncementRead,
   searchQuery,
   onSearchChange,
+  onLockWorkspace,
 }: InternHeaderProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -213,6 +216,18 @@ export function InternHeader({
                     <HelpCircle className="h-3.5 w-3.5 text-neutral-400" />
                     <span>Need Help?</span>
                   </button>
+                  {onLockWorkspace && (
+                    <button
+                      onClick={() => {
+                        onLockWorkspace();
+                        setIsProfileOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-amber-700 hover:bg-amber-50 cursor-pointer"
+                    >
+                      <Lock className="h-3.5 w-3.5 text-amber-600" />
+                      <span>Lock Workspace</span>
+                    </button>
+                  )}
                 </div>
                 <div className="border-t border-neutral-100 pt-1">
                   <Link

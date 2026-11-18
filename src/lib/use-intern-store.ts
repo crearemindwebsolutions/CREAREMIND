@@ -193,6 +193,47 @@ export function useInternStore(options?: UseInternStoreOptions) {
     });
   };
 
+  const addTask = (taskData: {
+    title: string;
+    project?: string;
+    dueDate?: string;
+    priority?: "High" | "Medium" | "Low";
+    description?: string;
+  }) => {
+    const newTask: InternTask = {
+      id: "TSK-" + Math.floor(1000 + Math.random() * 9000),
+      title: taskData.title.trim(),
+      project: taskData.project || (projects[0]?.name || "Core Engineering"),
+      assignedDate: new Date().toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
+      dueDate: taskData.dueDate || "Next Sprint",
+      priority: taskData.priority || "Medium",
+      status: "Not Started",
+      description: taskData.description || "Task assigned via intern daily planner.",
+      deliverables: ["Complete implementation & submit review link"],
+      attachments: [],
+    };
+
+    setTasksState((prev) => {
+      const next = [newTask, ...prev];
+      saveToStorage("tasks", next);
+      return next;
+    });
+
+    addActivity({
+      id: "ACT-" + Date.now(),
+      title: `Task Added: ${newTask.title}`,
+      type: "task_assigned",
+      timestamp: "Just now",
+      detail: `New task assigned in ${newTask.project}.`,
+    });
+
+    return newTask;
+  };
+
   const markAnnouncementRead = (id: string) => {
     setAnnouncementsState((prev) => {
       const next = prev.map((a) => (a.id === id ? { ...a, unread: false } : a));
@@ -288,6 +329,7 @@ export function useInternStore(options?: UseInternStoreOptions) {
     profile,
     updateProfile,
     tasks,
+    addTask,
     updateTaskStatus,
     submitTaskWork,
     projects,
