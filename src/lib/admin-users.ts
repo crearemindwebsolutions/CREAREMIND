@@ -44,12 +44,51 @@ export const DEFAULT_MANAGED_USERS: ManagedUser[] = [
     joinedDate: "18 Nov 2026",
     company: "Creare Mind Leadership",
   },
+  {
+    id: "10000001",
+    name: "CREARE MIND",
+    email: "crearemindwebsolutions@gmail.com",
+    phone: "8072719603",
+    provider: "Google OAuth",
+    role: "Super Admin",
+    joinedDate: "16 Oct 2026",
+    company: "Creare Mind Administration",
+  },
+  {
+    id: "53702161",
+    name: "Ajith Kumar",
+    email: "ajithkohli028@gmail.com",
+    phone: "—",
+    provider: "Google OAuth",
+    role: "Customer",
+    joinedDate: "18 Nov 2026",
+  },
+  {
+    id: "73819204",
+    name: "RAMESH P",
+    email: "jaisriramtextilekpm@gmail.com",
+    phone: "—",
+    provider: "Google OAuth",
+    role: "Admin",
+    joinedDate: "18 Nov 2026",
+  },
 ];
 
 const STORAGE_KEY = "creare_admin_users_list";
+const DELETED_STORAGE_KEY = "creare_admin_deleted_users_list";
+
+export interface DeletedUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  provider?: ManagedUser["provider"];
+  previousRole?: ManagedUser["role"];
+  deletedAt: string;
+  reason?: string;
+}
 
 const DUMMY_EMAILS = new Set([
-  "crearemindwebsolutions@gmail.com",
   "sarah.jenkins@quickcartpos.com",
   "liam.vance@aetherstudio.design",
   "elena@luminuxeskincare.com",
@@ -209,68 +248,177 @@ export function saveUsersToLocalStorage(users: ManagedUser[]): void {
 }
 
 /**
- * Fetches ALL live registered users from Supabase cloud database
+ * Retrieve deleted/revoked users synchronously from localStorage
  */
-export async function fetchUsersFromCloud(): Promise<ManagedUser[]> {
+export function getStoredDeletedUsers(): DeletedUserRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn("Failed to load deleted users from localStorage:", e);
+  }
+  return [];
+}
+
+/**
+ * Write deleted users to local storage and dispatch cross-tab synchronization event
+ */
+export function saveDeletedUsersToLocalStorage(deleted: DeletedUserRecord[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    // Dedupe deleted users by email (keep newest)
+    const seen = new Set<string>();
+    const cleaned: DeletedUserRecord[] = [];
+    for (const d of deleted) {
+      if (!d || !d.email) continue;
+      const key = d.email.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cleaned.push({
+        id: String(d.id || format8DigitUserId(key)),
+        name: String(d.name || key.split("@")[0] || "User").trim(),
+        email: key,
+        phone: d.phone || "—",
+        provider: d.provider || "Google OAuth",
+        previousRole: d.previousRole || "Customer",
+        deletedAt: d.deletedAt || new Date().toISOString(),
+        reason: d.reason || "Revoked by Administrator",
+      });
+    }
+    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(cleaned));
+    window.dispatchEvent(new CustomEvent("creare_deleted_users_updated", { detail: cleaned }));
+  } catch (e) {
+    console.error("Failed to save deleted users to localStorage:", e);
+  }
+}
+
+/**
+ * Fetches BOTH active users and deleted/revoked accounts from Supabase cloud database.
+ * Realtime and authoritative: parses all user_account records in Supabase.
+ */
+export async function fetchUsersAndDeletedFromCloud(): Promise<{
+  activeUsers: ManagedUser[];
+  deletedUsers: DeletedUserRecord[];
+}> {
   try {
     const { data, error } = await supabasePublic
       .from("media")
-      .select("url, created_at")
+      .select("url, created_at, original_filename, public_id")
       .eq("resource_type", "user_account")
       .order("created_at", { ascending: false });
 
-    const rowsByEmail = new Map<string, (ManagedUser & { isDeleted?: boolean })[]>();
+    const rowsByEmail = new Map<string, any[]>();
 
     if (!error && Array.isArray(data)) {
       for (const row of data) {
         try {
           if (row.url) {
-            const parsed = JSON.parse(row.url) as ManagedUser & { isDeleted?: boolean };
-            if (parsed && parsed.email) {
-              const emailKey = parsed.email.trim().toLowerCase();
-              if (!rowsByEmail.has(emailKey)) rowsByEmail.set(emailKey, []);
-              rowsByEmail.get(emailKey)!.push(parsed);
+            const parsed = JSON.parse(row.url);
+            const email = (
+              parsed.email ||
+              row.original_filename?.replace(/^DELETED_/, "") ||
+              ""
+            ).trim().toLowerCase();
+            if (email) {
+              if (!rowsByEmail.has(email)) rowsByEmail.set(email, []);
+              rowsByEmail.get(email)!.push({
+                ...parsed,
+                created_at: row.created_at,
+                orig_fn: row.original_filename,
+              });
             }
           }
         } catch {}
       }
     }
 
-    const cloudUsers: ManagedUser[] = [];
+    const activeUsers: ManagedUser[] = [];
+    const deletedUsers: DeletedUserRecord[] = [];
     const deletedEmails = new Set<string>();
 
     for (const [emailKey, rows] of rowsByEmail.entries()) {
       if (isDemoOrDummyEmail(emailKey)) continue;
 
-      // Authoritative: Inspect the NEWEST record for this email
+      // The newest row is the authoritative state
       const newest = rows[0];
-      if (newest?.isDeleted || (newest as any)?.role === "Deleted") {
+      const isDeleted = Boolean(
+        newest?.isDeleted ||
+        newest?.role === "Deleted" ||
+        newest?.orig_fn?.startsWith("DELETED_")
+      );
+
+      if (isDeleted) {
         deletedEmails.add(emailKey);
+        // Find if any historical row contained their profile details
+        const historicalActive = rows.find(
+          (r) => r.name && !r.isDeleted && r.role !== "Deleted"
+        );
+        deletedUsers.push({
+          id: newest.id || historicalActive?.id || format8DigitUserId(emailKey),
+          name: newest.name || historicalActive?.name || emailKey.split("@")[0] || "User",
+          email: emailKey,
+          phone: newest.phone || historicalActive?.phone || "—",
+          provider: newest.provider || historicalActive?.provider || "Google OAuth",
+          previousRole: newest.previousRole || historicalActive?.role || "Customer",
+          deletedAt: newest.deletedAt || newest.created_at || new Date().toISOString(),
+          reason: newest.reason || "Revoked by Administrator",
+        });
         continue;
       }
 
-      // The newest row contains the authoritative role and details saved by the admin
-      if (newest && newest.name && newest.role) {
-        cloudUsers.push(newest);
+      if (newest && (newest.name || newest.role)) {
+        activeUsers.push(newest);
       }
     }
 
-    // Filter localUsers to purge deleted accounts and demo accounts from browser storage
+    // Filter localUsers to purge deleted accounts from active cache
     const localUsers = getStoredUsers().filter(
-      (u) => !deletedEmails.has(u.email.trim().toLowerCase()) && !isDemoOrDummyEmail(u.email.trim().toLowerCase())
+      (u) =>
+        !deletedEmails.has(u.email.trim().toLowerCase()) &&
+        !isDemoOrDummyEmail(u.email.trim().toLowerCase())
     );
 
-    // Combine cloud users, purged local users, and default admin accounts
-    const combined = sanitizeAndDedupeUsers([...cloudUsers, ...localUsers, ...DEFAULT_MANAGED_USERS]).filter(
-      (u) => !deletedEmails.has(u.email.trim().toLowerCase()) && !isDemoOrDummyEmail(u.email.trim().toLowerCase())
+    // Filter defaults so deleted accounts never resurrect in active list
+    const defaultsNotDeleted = DEFAULT_MANAGED_USERS.filter(
+      (d) => !deletedEmails.has(d.email.trim().toLowerCase())
     );
 
-    saveUsersToLocalStorage(combined);
-    return combined;
+    const combinedActive = sanitizeAndDedupeUsers([
+      ...activeUsers,
+      ...localUsers,
+      ...defaultsNotDeleted,
+    ]).filter(
+      (u) =>
+        !deletedEmails.has(u.email.trim().toLowerCase()) &&
+        !isDemoOrDummyEmail(u.email.trim().toLowerCase())
+    );
+
+    saveUsersToLocalStorage(combinedActive);
+    saveDeletedUsersToLocalStorage(deletedUsers);
+
+    return {
+      activeUsers: combinedActive,
+      deletedUsers,
+    };
   } catch (err) {
-    console.warn("Could not fetch users from Supabase cloud:", err);
-    return DEFAULT_MANAGED_USERS;
+    console.warn("Could not fetch users and deleted from Supabase cloud:", err);
+    return {
+      activeUsers: DEFAULT_MANAGED_USERS,
+      deletedUsers: getStoredDeletedUsers(),
+    };
   }
+}
+
+/**
+ * Fetches ALL live active users from Supabase cloud database
+ */
+export async function fetchUsersFromCloud(): Promise<ManagedUser[]> {
+  const { activeUsers } = await fetchUsersAndDeletedFromCloud();
+  return activeUsers;
 }
 
 /**
@@ -544,27 +692,63 @@ export async function getUserRoleAsync(email: string): Promise<"Super Admin" | "
 }
 
 /**
- * Permanently deletes a user from cloud database and local cache.
- * Inserts a durable revocation tombstone so any active session for this user is force-logged out.
+ * Permanently deletes / revokes a user from cloud database and active directory.
+ * Inserts a durable revocation tombstone so any active session for this user is force-logged out,
+ * and moves them to the dedicated Deleted / Revoked Accounts table.
  */
-export async function deleteUserFromCloud(userId: string, email: string): Promise<boolean> {
+export async function deleteUserFromCloud(
+  userId: string,
+  email: string,
+  userMeta?: Partial<ManagedUser>
+): Promise<boolean> {
   try {
     const cleanEmail = email.trim().toLowerCase();
     const publicId = getEmailStorageKey(cleanEmail);
+    const nowIso = new Date().toISOString();
 
-    // Insert tombstone to propagate deletion across all devices and prevent resurrection
+    const tombstonePayload = {
+      email: cleanEmail,
+      isDeleted: true,
+      id: userId,
+      name: userMeta?.name || cleanEmail.split("@")[0] || "User",
+      role: "Deleted",
+      previousRole: userMeta?.role || "Customer",
+      provider: userMeta?.provider || "Google OAuth",
+      phone: userMeta?.phone || "—",
+      deletedAt: nowIso,
+    };
+
+    // Insert tombstone into Supabase media table under user_account
     await supabasePublic.from("media").insert({
       public_id: publicId,
       resource_type: "user_account",
-      url: JSON.stringify({ email: cleanEmail, isDeleted: true, id: userId, role: "Deleted" }),
+      url: JSON.stringify(tombstonePayload),
       original_filename: `DELETED_${cleanEmail}`,
     });
 
+    // Remove from active users list
     const current = getStoredUsers();
     const updated = current.filter(
       (u) => u.id !== userId && u.email.toLowerCase() !== cleanEmail
     );
     saveUsersToLocalStorage(updated);
+
+    // Add to deleted users list
+    const deletedRecord: DeletedUserRecord = {
+      id: userId,
+      name: tombstonePayload.name,
+      email: cleanEmail,
+      phone: tombstonePayload.phone,
+      provider: tombstonePayload.provider as any,
+      previousRole: tombstonePayload.previousRole as any,
+      deletedAt: nowIso,
+      reason: "Revoked by Administrator",
+    };
+
+    const currentDeleted = getStoredDeletedUsers().filter(
+      (d) => d.email.toLowerCase() !== cleanEmail
+    );
+    saveDeletedUsersToLocalStorage([deletedRecord, ...currentDeleted]);
 
     // Broadcast account deletion so any active tab/browser for this user force signs out immediately
     try {
@@ -574,7 +758,9 @@ export async function deleteUserFromCloud(userId: string, email: string): Promis
     } catch {}
 
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("creare_account_deleted", { detail: cleanEmail }));
+      window.dispatchEvent(
+        new CustomEvent("creare_account_deleted", { detail: cleanEmail })
+      );
     }
 
     return true;
@@ -582,6 +768,91 @@ export async function deleteUserFromCloud(userId: string, email: string): Promis
     console.warn("Failed to delete user from Supabase cloud:", err);
     return false;
   }
+}
+
+/**
+ * Restores a previously deleted user account in Supabase and reactivates their access.
+ */
+export async function restoreUserInCloud(
+  record: DeletedUserRecord,
+  appointedRole?: ManagedUser["role"]
+): Promise<boolean> {
+  if (!record || !record.email) return false;
+  const cleanEmail = record.email.trim().toLowerCase();
+  const targetRole = appointedRole || record.previousRole || "Customer";
+  const publicId = getEmailStorageKey(cleanEmail);
+
+  const restoredUser: ManagedUser = {
+    id: record.id || format8DigitUserId(cleanEmail),
+    name: record.name || cleanEmail.split("@")[0] || "User",
+    email: cleanEmail,
+    phone: record.phone && record.phone !== "—" ? record.phone : "—",
+    provider: (record.provider || "Google OAuth") as ManagedUser["provider"],
+    role: targetRole,
+    joinedDate: new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+  };
+
+  try {
+    // Insert new authoritative active record into Supabase media table
+    const { error } = await supabasePublic.from("media").insert({
+      public_id: publicId,
+      resource_type: "user_account",
+      url: JSON.stringify(restoredUser),
+      original_filename: cleanEmail,
+    });
+
+    if (error) {
+      console.warn("Error inserting restored user in Supabase:", error.message);
+    }
+
+    // Add back to active users
+    const currentActive = getStoredUsers().filter(
+      (u) => u.email.toLowerCase() !== cleanEmail
+    );
+    const updatedActive = sanitizeAndDedupeUsers([restoredUser, ...currentActive]);
+    saveUsersToLocalStorage(updatedActive);
+
+    // Remove from deleted users
+    const currentDeleted = getStoredDeletedUsers().filter(
+      (d) => d.email.toLowerCase() !== cleanEmail
+    );
+    saveDeletedUsersToLocalStorage(currentDeleted);
+
+    // Broadcast across tabs
+    try {
+      const bc = new BroadcastChannel("creare_admin_channel");
+      bc.postMessage({ type: "user_restored", user: restoredUser });
+      bc.close();
+    } catch {}
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("creare_user_restored", { detail: restoredUser })
+      );
+    }
+
+    return !error;
+  } catch (err) {
+    console.error("Failed to restore user in Supabase cloud:", err);
+    return false;
+  }
+}
+
+/**
+ * Permanently purges a record from the Deleted Accounts table.
+ */
+export function purgeDeletedUserRecord(email: string): boolean {
+  if (!email) return false;
+  const cleanEmail = email.trim().toLowerCase();
+  const currentDeleted = getStoredDeletedUsers().filter(
+    (d) => d.email.toLowerCase() !== cleanEmail
+  );
+  saveDeletedUsersToLocalStorage(currentDeleted);
+  return true;
 }
 
 /**

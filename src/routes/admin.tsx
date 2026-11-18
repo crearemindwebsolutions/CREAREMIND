@@ -78,6 +78,8 @@ import {
   Receipt,
   Briefcase,
   Activity,
+  RotateCcw,
+  UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -104,12 +106,17 @@ import {
 } from "@/lib/admin-invoices";
 import {
   type ManagedUser,
+  type DeletedUserRecord,
   DEFAULT_MANAGED_USERS,
   getStoredUsers,
+  getStoredDeletedUsers,
   saveUsersToLocalStorage,
   fetchUsersFromCloud,
+  fetchUsersAndDeletedFromCloud,
   saveUserToCloud,
   deleteUserFromCloud,
+  restoreUserInCloud,
+  purgeDeletedUserRecord,
   generateUnique8DigitId,
   exportUsersToCsv,
   sanitizeAndDedupeUsers,
@@ -301,7 +308,10 @@ function AdminPage() {
   // Live Realtime Subscriptions & Background Cloud Sync
   useEffect(() => {
     // 1. Initial Cloud Sync
-    fetchUsersFromCloud().then((u) => setUsersList(u)).catch(() => {});
+    fetchUsersAndDeletedFromCloud().then(({ activeUsers, deletedUsers }) => {
+      setUsersList(activeUsers);
+      setDeletedUsersList(deletedUsers);
+    }).catch(() => {});
     fetchInquiriesFromCloud().then((i) => setInquiriesList(i)).catch(() => {});
     fetchProjectsFromCloud().then((p) => setProjectsList(p)).catch(() => {});
     fetchInvoicesFromCloud().then((inv) => setInvoicesList(inv)).catch(() => {});
@@ -316,15 +326,17 @@ function AdminPage() {
           const record = payload.new as any;
           if (!record) return;
 
-          // When a user signs in, registers, or updates account
+          // When a user signs in, registers, updates account, or is deleted
           if (record.resource_type === "user_account" && record.url) {
             try {
               const parsed = JSON.parse(record.url);
               if (parsed && parsed.email) {
                 if (parsed.isDeleted || parsed.role === "Deleted") {
                   setUsersList((prev) => prev.filter((u) => u.email.toLowerCase() !== parsed.email.toLowerCase()));
+                  setDeletedUsersList(getStoredDeletedUsers());
                 } else if (parsed.name && parsed.role) {
                   setUsersList((prev) => sanitizeAndDedupeUsers([parsed, ...prev]));
+                  setDeletedUsersList((prev) => prev.filter((d) => d.email.toLowerCase() !== parsed.email.toLowerCase()));
                   toast.info(`Live User Synced: ${parsed.name} (${parsed.role})`);
                 }
               }
@@ -353,17 +365,29 @@ function AdminPage() {
         if (event.data?.type === "users_updated" && Array.isArray(event.data.users)) {
           setUsersList(event.data.users);
         }
+        if (event.data?.type === "account_deleted" || event.data?.type === "user_restored") {
+          fetchUsersAndDeletedFromCloud().then(({ activeUsers, deletedUsers }) => {
+            setUsersList(activeUsers);
+            setDeletedUsersList(deletedUsers);
+          }).catch(() => {});
+        }
       };
     } catch {}
 
     // 4. Background re-sync timer every 15 seconds + on window focus
     const syncInterval = setInterval(() => {
-      fetchUsersFromCloud().then((u) => setUsersList(u)).catch(() => {});
+      fetchUsersAndDeletedFromCloud().then(({ activeUsers, deletedUsers }) => {
+        setUsersList(activeUsers);
+        setDeletedUsersList(deletedUsers);
+      }).catch(() => {});
     }, 15000);
 
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === "visible") {
-        fetchUsersFromCloud().then((u) => setUsersList(u)).catch(() => {});
+        fetchUsersAndDeletedFromCloud().then(({ activeUsers, deletedUsers }) => {
+          setUsersList(activeUsers);
+          setDeletedUsersList(deletedUsers);
+        }).catch(() => {});
       }
     };
     window.addEventListener("focus", handleVisibilityOrFocus);
@@ -373,6 +397,9 @@ function AdminPage() {
     const handleUsersUpdate = () => {
       setUsersList(getStoredUsers());
     };
+    const handleDeletedUsersUpdate = () => {
+      setDeletedUsersList(getStoredDeletedUsers());
+    };
     const handleProjectsUpdate = () => {
       setProjectsList(getStoredProjects());
     };
@@ -380,6 +407,7 @@ function AdminPage() {
       setInvoicesList(getStoredInvoices());
     };
     window.addEventListener("creare_users_updated", handleUsersUpdate);
+    window.addEventListener("creare_deleted_users_updated", handleDeletedUsersUpdate);
     window.addEventListener("creare_projects_updated", handleProjectsUpdate);
     window.addEventListener("creare_invoices_updated", handleInvoicesUpdate);
 
@@ -390,6 +418,7 @@ function AdminPage() {
       window.removeEventListener("focus", handleVisibilityOrFocus);
       document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
       window.removeEventListener("creare_users_updated", handleUsersUpdate);
+      window.removeEventListener("creare_deleted_users_updated", handleDeletedUsersUpdate);
       window.removeEventListener("creare_projects_updated", handleProjectsUpdate);
       window.removeEventListener("creare_invoices_updated", handleInvoicesUpdate);
     };
@@ -527,6 +556,11 @@ function AdminPage() {
   const [userProviderFilter, setUserProviderFilter] = useState<"all" | "Google OAuth" | "Email / Password" | "Phone OTP" | "GitHub">("all");
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
 
+  // Sub-tab: Active Accounts vs. Removed & Revoked Accounts (Separate Table)
+  const [usersSubTab, setUsersSubTab] = useState<"active" | "deleted">("active");
+  const [deletedUsersList, setDeletedUsersList] = useState<DeletedUserRecord[]>(() => getStoredDeletedUsers());
+  const [deletedUserSearch, setDeletedUserSearch] = useState("");
+
   // Automatically sync real authenticated session user into directory
   useEffect(() => {
     if (!user || !user.email) return;
@@ -609,11 +643,12 @@ function AdminPage() {
   const handleRefreshUsers = async () => {
     setIsRefreshingUsers(true);
     try {
-      const liveUsers = await fetchUsersFromCloud();
-      setUsersList(liveUsers);
-      toast.success(`User directory synchronized (${liveUsers.length} total users)`);
+      const { activeUsers, deletedUsers } = await fetchUsersAndDeletedFromCloud();
+      setUsersList(activeUsers);
+      setDeletedUsersList(deletedUsers);
+      toast.success(`Supabase synchronized (${activeUsers.length} active, ${deletedUsers.length} removed)`);
     } catch {
-      toast.error("Failed to sync users from cloud");
+      toast.error("Failed to sync users from Supabase cloud");
     } finally {
       setIsRefreshingUsers(false);
     }
@@ -693,12 +728,41 @@ function AdminPage() {
   const handleDeleteUser = async (id: string, name: string) => {
     const target = usersList.find((u) => u.id === id);
     if (!target) return;
-    if (confirm(`Are you sure you want to remove user "${name}" (${id})?`)) {
+    if (confirm(`Are you sure you want to remove user "${name}" (${id})? Their account will be revoked in Supabase and moved to the Removed Accounts table.`)) {
       const updated = usersList.filter((u) => u.id !== id);
       saveUsersList(updated);
-      await deleteUserFromCloud(id, target.email);
+      await deleteUserFromCloud(id, target.email, target);
+      setDeletedUsersList(getStoredDeletedUsers());
       recordAdminLog(user?.email || "admin@crearemind.in", "Deleted Customer", "Users", `Removed account ${name} (${id})`);
-      toast.success(`Removed user ${name}.`);
+      toast.success(`Removed user ${name}. Moved to Removed Accounts table.`);
+    }
+  };
+
+  const handleRestoreUser = async (record: DeletedUserRecord) => {
+    setIsRefreshingUsers(true);
+    try {
+      const ok = await restoreUserInCloud(record);
+      if (ok) {
+        toast.success(`Restored user ${record.name} (${record.email}) to Active Accounts!`);
+        const { activeUsers, deletedUsers } = await fetchUsersAndDeletedFromCloud();
+        setUsersList(activeUsers);
+        setDeletedUsersList(deletedUsers);
+        recordAdminLog(user?.email || "admin@crearemind.in", "Restored Customer", "Users", `Restored account ${record.name} (${record.email})`);
+      } else {
+        toast.error("Failed to restore account in Supabase cloud.");
+      }
+    } catch {
+      toast.error("Failed to restore user");
+    } finally {
+      setIsRefreshingUsers(false);
+    }
+  };
+
+  const handlePurgeDeletedUser = (email: string) => {
+    if (confirm(`Permanently remove record for ${email} from this view?`)) {
+      purgeDeletedUserRecord(email);
+      setDeletedUsersList(getStoredDeletedUsers());
+      toast.success(`Purged record for ${email}`);
     }
   };
 
@@ -718,7 +782,7 @@ function AdminPage() {
     toast.success("Exported users list to CSV!");
   };
 
-  // Filtered users
+  // Filtered users (Active)
   const filteredUsers = usersList.filter((u) => {
     if (!u) return false;
     const q = userSearch.toLowerCase().trim();
@@ -738,6 +802,18 @@ function AdminPage() {
     const matchesProvider = userProviderFilter === "all" || u.provider === userProviderFilter;
 
     return matchesSearch && matchesRole && matchesProvider;
+  });
+
+  // Filtered deleted/revoked users
+  const filteredDeletedUsers = deletedUsersList.filter((d) => {
+    if (!d) return false;
+    const q = deletedUserSearch.toLowerCase().trim();
+    if (!q) return true;
+    const name = String(d.name || "").toLowerCase();
+    const email = String(d.email || "").toLowerCase();
+    const id = String(d.id || "").toLowerCase();
+    const phone = String(d.phone || "");
+    return name.includes(q) || email.includes(q) || id.includes(q) || phone.includes(q);
   });
 
 
@@ -1792,10 +1868,10 @@ function AdminPage() {
               </div>
 
               {/* Metric Highlights Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
                 <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xs">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 font-semibold">
-                    Total Users
+                    Total Active
                   </span>
                   <div className="mt-1 text-2xl font-bold text-neutral-900">{usersList.length}</div>
                 </div>
@@ -1826,281 +1902,538 @@ function AdminPage() {
                     {usersList.filter((u) => u.role === "Super Admin" || u.role === "Admin").length}
                   </div>
                 </div>
-              </div>
 
-              {/* Search & Filters Row */}
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                  <input
-                    type="text"
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    placeholder="Search by customer name, email, phone, or User ID..."
-                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-neutral-900 shadow-xs transition-all"
-                  />
-                  {userSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setUserSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <select
-                    value={userRoleFilter}
-                    onChange={(e) => setUserRoleFilter(e.target.value as any)}
-                    className="h-10 px-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-700 outline-none focus:border-neutral-900 shadow-xs cursor-pointer"
-                  >
-                    <option value="all">All Roles</option>
-                    <option value="Customer">Customer</option>
-                    <option value="Intern">Intern</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Super Admin">Super Admin</option>
-                  </select>
-
-                  <select
-                    value={userProviderFilter}
-                    onChange={(e) => setUserProviderFilter(e.target.value as any)}
-                    className="h-10 px-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-700 outline-none focus:border-neutral-900 shadow-xs cursor-pointer"
-                  >
-                    <option value="all">All Providers</option>
-                    <option value="Google OAuth">Google OAuth</option>
-                    <option value="Email / Password">Email / Password</option>
-                    <option value="Phone OTP">Phone OTP</option>
-                    <option value="GitHub">GitHub</option>
-                  </select>
+                <div
+                  onClick={() => setUsersSubTab("deleted")}
+                  className={`rounded-2xl border p-4 shadow-xs cursor-pointer transition-all ${
+                    usersSubTab === "deleted"
+                      ? "border-red-400 bg-red-50/50 ring-2 ring-red-200"
+                      : "border-neutral-200 bg-white hover:border-red-200 hover:bg-red-50/20"
+                  }`}
+                  title="Click to view dedicated Removed & Revoked Accounts table"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-red-600 font-semibold">
+                      Removed Accounts
+                    </span>
+                    <UserX className="w-3.5 h-3.5 text-red-500" />
+                  </div>
+                  <div className="mt-1 text-2xl font-bold text-red-600">{deletedUsersList.length}</div>
                 </div>
               </div>
 
-              {/* User Management Table with Exact Column Specifications */}
-              <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-neutral-200 bg-[#FAF8F5] text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-600 select-none">
-                        <th className="py-3.5 px-4 whitespace-nowrap">User ID</th>
-                        <th className="py-3.5 px-4 whitespace-nowrap">Customer Name</th>
-                        <th className="py-3.5 px-4 whitespace-nowrap">Email Address</th>
-                        <th className="py-3.5 px-4 whitespace-nowrap">Mobile Number</th>
-                        <th className="py-3.5 px-4 whitespace-nowrap">Sign-up Provider</th>
-                        <th className="py-3.5 px-4 whitespace-nowrap">Account Role</th>
-                        <th className="py-3.5 px-4 whitespace-nowrap">Joined Date</th>
-                        <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100 text-xs">
-                      {filteredUsers.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="py-12 text-center text-neutral-400">
-                            No users found matching your search criteria.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredUsers.map((u) => {
-                          const isCopied = copiedUserId === u.id;
-                          return (
-                            <tr key={u.id} className="hover:bg-neutral-50/70 transition-colors">
-                              {/* 1. User ID */}
-                              <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px]">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-semibold text-neutral-700">{u.id}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCopyUserId(u.id)}
-                                    className="p-1 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
-                                    title="Copy User ID"
-                                  >
-                                    {isCopied ? (
-                                      <Check className="w-3 h-3 text-emerald-600" />
+              {/* Sub-Tab Navigation Bar: Active Directory vs Removed Accounts Table */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 pb-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUsersSubTab("active")}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                      usersSubTab === "active"
+                        ? "border-neutral-900 text-neutral-900"
+                        : "border-transparent text-neutral-500 hover:text-neutral-900"
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Active Directory</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      usersSubTab === "active" ? "bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-600"
+                    }`}>
+                      {usersList.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setUsersSubTab("deleted")}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                      usersSubTab === "deleted"
+                        ? "border-red-600 text-red-600"
+                        : "border-transparent text-neutral-500 hover:text-red-600"
+                    }`}
+                  >
+                    <UserX className="w-4 h-4" />
+                    <span>Removed Accounts Table</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      usersSubTab === "deleted" ? "bg-red-600 text-white" : "bg-red-50 text-red-700 border border-red-200"
+                    }`}>
+                      {deletedUsersList.length}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] text-neutral-500 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Supabase Sync: Active (Project lnfdtleuoyjkqmuonhnt)</span>
+                </div>
+              </div>
+
+              {/* TAB 1: ACTIVE USERS DIRECTORY */}
+              {usersSubTab === "active" && (
+                <div className="space-y-4">
+                  {/* Search & Filters Row */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="relative flex-1 w-full">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                      <input
+                        type="text"
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        placeholder="Search by customer name, email, phone, or User ID..."
+                        className="w-full h-10 pl-9 pr-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-neutral-900 shadow-xs transition-all"
+                      />
+                      {userSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setUserSearch("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <select
+                        value={userRoleFilter}
+                        onChange={(e) => setUserRoleFilter(e.target.value as any)}
+                        className="h-10 px-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-700 outline-none focus:border-neutral-900 shadow-xs cursor-pointer"
+                      >
+                        <option value="all">All Roles</option>
+                        <option value="Customer">Customer</option>
+                        <option value="Intern">Intern</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Super Admin">Super Admin</option>
+                      </select>
+
+                      <select
+                        value={userProviderFilter}
+                        onChange={(e) => setUserProviderFilter(e.target.value as any)}
+                        className="h-10 px-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-700 outline-none focus:border-neutral-900 shadow-xs cursor-pointer"
+                      >
+                        <option value="all">All Providers</option>
+                        <option value="Google OAuth">Google OAuth</option>
+                        <option value="Email / Password">Email / Password</option>
+                        <option value="Phone OTP">Phone OTP</option>
+                        <option value="GitHub">GitHub</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* User Management Table with Exact Column Specifications */}
+                  <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-neutral-200 bg-[#FAF8F5] text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-600 select-none">
+                            <th className="py-3.5 px-4 whitespace-nowrap">User ID</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Customer Name</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Email Address</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Mobile Number</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Sign-up Provider</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Account Role</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Joined Date</th>
+                            <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100 text-xs">
+                          {filteredUsers.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="py-12 text-center text-neutral-400">
+                                No users found matching your search criteria.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredUsers.map((u) => {
+                              const isCopied = copiedUserId === u.id;
+                              return (
+                                <tr key={u.id} className="hover:bg-neutral-50/70 transition-colors">
+                                  {/* 1. User ID */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px]">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-semibold text-neutral-700">{u.id}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyUserId(u.id)}
+                                        className="p-1 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+                                        title="Copy User ID"
+                                      >
+                                        {isCopied ? (
+                                          <Check className="w-3 h-3 text-emerald-600" />
+                                        ) : (
+                                          <Copy className="w-3 h-3" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  </td>
+
+                                  {/* 2. Customer Name */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-neutral-900 text-white font-medium text-[11px] grid place-items-center shrink-0 uppercase shadow-2xs font-mono">
+                                        {String(u.name || u.email || "U")
+                                          .trim()
+                                          .split(/\s+/)
+                                          .map((n) => n[0] || "")
+                                          .slice(0, 2)
+                                          .join("")
+                                          .toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-neutral-900 leading-tight">{u.name}</p>
+                                        {u.company && (
+                                          <p className="text-[10px] text-neutral-400 mt-0.5">{u.company}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* 3. Email Address */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5 text-neutral-700">
+                                      <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                                      <a
+                                        href={`mailto:${u.email}`}
+                                        className="hover:text-indigo-600 hover:underline font-medium"
+                                      >
+                                        {u.email}
+                                      </a>
+                                    </div>
+                                  </td>
+
+                                  {/* 4. Mobile Number */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {u.phone && u.phone.trim() ? (
+                                      <div className="flex items-center gap-1.5 font-mono text-[11px] text-neutral-700">
+                                        <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                                        <span>{u.phone}</span>
+                                      </div>
                                     ) : (
-                                      <Copy className="w-3 h-3" />
+                                      <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400 italic">
+                                        <span>Not provided</span>
+                                      </span>
                                     )}
-                                  </button>
-                                </div>
-                              </td>
+                                  </td>
 
-                              {/* 2. Customer Name */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-8 h-8 rounded-full bg-neutral-900 text-white font-medium text-[11px] grid place-items-center shrink-0 uppercase shadow-2xs font-mono">
-                                    {String(u.name || u.email || "U")
-                                      .trim()
-                                      .split(/\s+/)
-                                      .map((n) => n[0] || "")
-                                      .slice(0, 2)
-                                      .join("")
-                                      .toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold text-neutral-900 leading-tight">{u.name}</p>
-                                    {u.company && (
-                                      <p className="text-[10px] text-neutral-400 mt-0.5">{u.company}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
+                                  {/* 5. Sign-up Provider */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-white border-neutral-200 text-neutral-700 shadow-2xs">
+                                      {u.provider === "Google OAuth" ? (
+                                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                                      ) : u.provider === "Email / Password" ? (
+                                        <Key className="w-3 h-3 text-neutral-400 shrink-0" />
+                                      ) : (
+                                        <Shield className="w-3 h-3 text-neutral-400 shrink-0" />
+                                      )}
+                                      <span>{u.provider}</span>
+                                    </span>
+                                  </td>
 
-                              {/* 3. Email Address */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5 text-neutral-700">
-                                  <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                  <a
-                                    href={`mailto:${u.email}`}
-                                    className="hover:text-indigo-600 hover:underline font-medium"
-                                  >
-                                    {u.email}
-                                  </a>
-                                </div>
-                              </td>
+                                  {/* 6. Account Role */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <select
+                                        value={u.role}
+                                        onChange={(e) => handleRoleChange(u.id, e.target.value as ManagedUser["role"])}
+                                        disabled={ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())}
+                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer border transition-colors outline-none shadow-2xs ${
+                                          u.role === "Super Admin"
+                                            ? "bg-purple-100 text-purple-900 border-purple-300 hover:bg-purple-200"
+                                            : u.role === "Admin"
+                                            ? "bg-neutral-900 text-white border-neutral-800 hover:bg-neutral-800"
+                                            : u.role === "Intern"
+                                            ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                            : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                                        } ${
+                                          ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())
+                                            ? "cursor-not-allowed opacity-80"
+                                            : ""
+                                        }`}
+                                        title={
+                                          ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())
+                                            ? "Primary founder role is permanent"
+                                            : `Change role for ${u.name}`
+                                        }
+                                      >
+                                        <option value="Super Admin" className="bg-white text-neutral-900">
+                                          🛡️ Super Admin
+                                        </option>
+                                        <option value="Admin" className="bg-white text-neutral-900">
+                                          ⚡ Admin
+                                        </option>
+                                        <option value="Intern" className="bg-white text-neutral-900">
+                                          🌱 Intern
+                                        </option>
+                                        <option value="Customer" className="bg-white text-neutral-900">
+                                          👤 Customer
+                                        </option>
+                                      </select>
+                                    </div>
+                                  </td>
 
-                              {/* 4. Mobile Number */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                {u.phone && u.phone.trim() ? (
-                                  <div className="flex items-center gap-1.5 font-mono text-[11px] text-neutral-700">
-                                    <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                    <span>{u.phone}</span>
-                                  </div>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400 italic">
-                                    <span>Not provided</span>
-                                  </span>
-                                )}
-                              </td>
+                                  {/* 7. Joined Date */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-neutral-500">
+                                    {u.joinedDate}
+                                  </td>
 
-                              {/* 5. Sign-up Provider */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-white border-neutral-200 text-neutral-700 shadow-2xs">
-                                  {u.provider === "Google OAuth" ? (
-                                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                                  ) : u.provider === "Email / Password" ? (
-                                    <Key className="w-3 h-3 text-neutral-400 shrink-0" />
-                                  ) : (
-                                    <Shield className="w-3 h-3 text-neutral-400 shrink-0" />
-                                  )}
-                                  <span>{u.provider}</span>
-                                </span>
-                              </td>
+                                  {/* Actions */}
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5 justify-end">
+                                      {u.role === "Customer" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRoleChange(u.id, "Intern")}
+                                          className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-neutral-900 text-white hover:bg-neutral-800 shadow-2xs transition-colors cursor-pointer"
+                                          title="Appoint as Intern"
+                                        >
+                                          + Appoint Intern
+                                        </button>
+                                      )}
 
-                              {/* 6. Account Role */}
-                              <td className="py-3.5 px-4 whitespace-nowrap">
-                                <div className="inline-flex items-center gap-1.5">
-                                  <select
-                                    value={u.role}
-                                    onChange={(e) => handleRoleChange(u.id, e.target.value as ManagedUser["role"])}
-                                    disabled={ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())}
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer border transition-colors outline-none shadow-2xs ${
-                                      u.role === "Super Admin"
-                                        ? "bg-purple-100 text-purple-900 border-purple-300 hover:bg-purple-200"
-                                        : u.role === "Admin"
-                                        ? "bg-neutral-900 text-white border-neutral-800 hover:bg-neutral-800"
-                                        : u.role === "Intern"
-                                        ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
-                                        : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
-                                    } ${
-                                      ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())
-                                        ? "cursor-not-allowed opacity-80"
-                                        : ""
-                                    }`}
-                                    title={
-                                      ADMIN_EMAILS.slice(0, 1).some((a) => a.toLowerCase() === u.email.toLowerCase())
-                                        ? "Primary founder role is permanent"
-                                        : `Change role for ${u.name}`
-                                    }
-                                  >
-                                    <option value="Super Admin" className="bg-white text-neutral-900">
-                                      🛡️ Super Admin
-                                    </option>
-                                    <option value="Admin" className="bg-white text-neutral-900">
-                                      ⚡ Admin
-                                    </option>
-                                    <option value="Intern" className="bg-white text-neutral-900">
-                                      🌱 Intern
-                                    </option>
-                                    <option value="Customer" className="bg-white text-neutral-900">
-                                      👤 Customer
-                                    </option>
-                                  </select>
-                                </div>
-                              </td>
+                                      {u.role === "Intern" && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(
+                                                `Hello ${u.name}, your Creare Mind Intern Workspace is ready!\nLogin: https://crearemind.in/auth?redirect=/intern\nYour 8-Digit Intern ID: ${u.id}`
+                                              );
+                                              toast.success(`Copied Intern Invite & Workspace link for ${u.name}!`);
+                                            }}
+                                            className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                                            title="Copy Intern Workspace Link & Instructions"
+                                          >
+                                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                                            <span>Copy Link</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRoleChange(u.id, "Customer")}
+                                            className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 transition-colors cursor-pointer"
+                                            title="Remove Intern Role"
+                                          >
+                                            Demote to Client
+                                          </button>
+                                        </>
+                                      )}
 
-                              {/* 7. Joined Date */}
-                              <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-neutral-500">
-                                {u.joinedDate}
-                              </td>
-
-                              {/* Actions */}
-                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                <div className="inline-flex items-center gap-1.5 justify-end">
-                                  {u.role === "Customer" && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRoleChange(u.id, "Intern")}
-                                      className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-neutral-900 text-white hover:bg-neutral-800 shadow-2xs transition-colors cursor-pointer"
-                                      title="Appoint as Intern"
-                                    >
-                                      + Appoint Intern
-                                    </button>
-                                  )}
-
-                                  {u.role === "Intern" && (
-                                    <>
                                       <button
                                         type="button"
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(
-                                            `Hello ${u.name}, your Creare Mind Intern Workspace is ready!\nLogin: https://crearemind.in/auth?redirect=/intern\nYour 8-Digit Intern ID: ${u.id}`
-                                          );
-                                          toast.success(`Copied Intern Invite & Workspace link for ${u.name}!`);
-                                        }}
-                                        className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer inline-flex items-center gap-1"
-                                        title="Copy Intern Workspace Link & Instructions"
+                                        onClick={() => setEditingUser(u)}
+                                        className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+                                        title="Edit User"
                                       >
-                                        <Sparkles className="w-3 h-3 text-emerald-600" />
-                                        <span>Copy Link</span>
+                                        <Edit3 className="w-3.5 h-3.5" />
                                       </button>
+
                                       <button
                                         type="button"
-                                        onClick={() => handleRoleChange(u.id, "Customer")}
-                                        className="px-2 py-1 rounded-md text-[10.5px] font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 transition-colors cursor-pointer"
-                                        title="Remove Intern Role"
+                                        onClick={() => handleDeleteUser(u.id, u.name)}
+                                        className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                        title={`Delete ${u.name}`}
                                       >
-                                        Demote to Client
+                                        <Trash2 className="w-3.5 h-3.5" />
                                       </button>
-                                    </>
-                                  )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingUser(u)}
-                                    className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
-                                    title="Edit User"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
+              {/* TAB 2: SEPARATE TABLE FOR REMOVED & REVOKED ACCOUNTS */}
+              {usersSubTab === "deleted" && (
+                <div className="space-y-4">
+                  {/* Search & Info Banner */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="relative flex-1 w-full sm:max-w-md">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                      <input
+                        type="text"
+                        value={deletedUserSearch}
+                        onChange={(e) => setDeletedUserSearch(e.target.value)}
+                        placeholder="Search removed accounts by name, email, or User ID..."
+                        className="w-full h-10 pl-9 pr-3 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-neutral-900 shadow-xs transition-all"
+                      />
+                      {deletedUserSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setDeletedUserSearch("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteUser(u.id, u.name)}
-                                    className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                                    title={`Delete ${u.name}`}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                    <div className="flex items-center gap-2 text-xs text-neutral-600 bg-amber-50/60 border border-amber-200/80 px-3 py-2 rounded-xl">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Removed accounts are revoked in Supabase. Click <strong>Restore Account</strong> to reactivate anytime.</span>
+                    </div>
+                  </div>
+
+                  {/* Separate Table for Removed Accounts */}
+                  <div className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-red-200 bg-red-50/50 text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-700 select-none">
+                            <th className="py-3.5 px-4 whitespace-nowrap">User ID</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Customer Name</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Email Address</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Mobile Number</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Sign-up Provider</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Previous Role</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Removed On</th>
+                            <th className="py-3.5 px-4 whitespace-nowrap">Supabase Status</th>
+                            <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100 text-xs">
+                          {filteredDeletedUsers.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="py-12 text-center text-neutral-400">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <UserCheck className="w-8 h-8 text-emerald-500 stroke-[1.5]" />
+                                  <p className="font-semibold text-neutral-700">No Removed Accounts Found</p>
+                                  <p className="text-[11px] text-neutral-400 max-w-sm">
+                                    {deletedUserSearch
+                                      ? "No removed accounts match your search filter."
+                                      : "All users in your organization are currently active."}
+                                  </p>
                                 </div>
                               </td>
                             </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+                          ) : (
+                            filteredDeletedUsers.map((d) => {
+                              const isCopied = copiedUserId === d.id;
+                              const formattedDate = d.deletedAt
+                                ? new Date(d.deletedAt).toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "Recently";
+                              return (
+                                <tr key={d.email} className="hover:bg-red-50/20 transition-colors bg-white">
+                                  {/* 1. User ID */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px]">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-semibold text-neutral-700">{d.id}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyUserId(d.id)}
+                                        className="p-1 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+                                        title="Copy User ID"
+                                      >
+                                        {isCopied ? (
+                                          <Check className="w-3 h-3 text-emerald-600" />
+                                        ) : (
+                                          <Copy className="w-3 h-3" />
+                                        )}
+                                      </button>
+                                    </div>
+                                  </td>
+
+                                  {/* 2. Customer Name */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-neutral-200 text-neutral-600 font-medium text-[11px] grid place-items-center shrink-0 uppercase shadow-2xs font-mono">
+                                        {String(d.name || d.email || "U")
+                                          .trim()
+                                          .split(/\s+/)
+                                          .map((n) => n[0] || "")
+                                          .slice(0, 2)
+                                          .join("")
+                                          .toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <p className="font-semibold text-neutral-800 leading-tight line-through opacity-75">{d.name}</p>
+                                        <span className="text-[10px] text-red-600 font-mono font-medium">Access Revoked</span>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* 3. Email Address */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5 text-neutral-700">
+                                      <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                                      <span className="font-mono text-neutral-600">{d.email}</span>
+                                    </div>
+                                  </td>
+
+                                  {/* 4. Mobile Number */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-neutral-500">
+                                    {d.phone || "—"}
+                                  </td>
+
+                                  {/* 5. Provider */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-white border-neutral-200 text-neutral-600 shadow-2xs">
+                                      <span className="w-2 h-2 rounded-full bg-neutral-400 shrink-0" />
+                                      <span>{d.provider || "Google OAuth"}</span>
+                                    </span>
+                                  </td>
+
+                                  {/* 6. Previous Role */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200">
+                                      {d.previousRole || "Customer"}
+                                    </span>
+                                  </td>
+
+                                  {/* 7. Removed On */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-neutral-500">
+                                    {formattedDate}
+                                  </td>
+
+                                  {/* 8. Supabase Status */}
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-mono font-semibold bg-red-50 text-red-700 border border-red-200">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                      <span>Revoked in Supabase</span>
+                                    </span>
+                                  </td>
+
+                                  {/* 9. Actions */}
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-2 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRestoreUser(d)}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all active:scale-95 cursor-pointer"
+                                        title="Restore this account back to Active Users"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span>Restore Account</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handlePurgeDeletedUser(d.email)}
+                                        className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                        title="Purge record"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
