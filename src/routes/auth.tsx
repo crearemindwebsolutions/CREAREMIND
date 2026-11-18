@@ -150,6 +150,7 @@ function AuthPage() {
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [otp, setOtp] = useState("");
+  const [otpLength, setOtpLength] = useState<6 | 8>(6);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
 
@@ -294,8 +295,8 @@ function AuthPage() {
   const verifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otp.trim().replace(/\D/g, "");
-    if (cleanOtp.length < 6) {
-      setMsg({ ok: false, t: "Please enter the full 6-digit code." });
+    if (cleanOtp.length < otpLength) {
+      setMsg({ ok: false, t: `Please enter the complete ${otpLength}-digit code.` });
       return;
     }
     setBusy(true); setMsg(null);
@@ -325,15 +326,23 @@ function AuthPage() {
       email,
     });
     if (error) setMsg({ ok: false, t: error.message });
-    else setMsg({ ok: true, t: "A new 6-digit code has been sent to your email." });
+    else setMsg({ ok: true, t: "A new verification code has been sent to your email." });
     setBusy(false);
   };
 
   const handlePasteClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      const digits = text.replace(/\D/g, "").slice(0, 6);
-      if (digits) {
+      const digits = text.replace(/\D/g, "");
+      if (digits.length >= 8) {
+        setOtpLength(8);
+        setOtp(digits.slice(0, 8));
+        setMsg(null);
+      } else if (digits.length >= 6) {
+        setOtpLength(6);
+        setOtp(digits.slice(0, 6));
+        setMsg(null);
+      } else if (digits) {
         setOtp(digits);
         setMsg(null);
       }
@@ -354,15 +363,15 @@ function AuthPage() {
     } else {
       setMode("reset");
       setOtp("");
-      setMsg({ ok: true, t: "We've sent a 6-digit password reset code to your email." });
+      setMsg({ ok: true, t: "We've sent a recovery code to your email." });
     }
   };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otp.trim().replace(/\D/g, "");
-    if (cleanOtp.length < 6) {
-      setMsg({ ok: false, t: "Please enter the 6-digit recovery code." });
+    if (cleanOtp.length < otpLength) {
+      setMsg({ ok: false, t: `Please enter the complete ${otpLength}-digit recovery code.` });
       return;
     }
     if (!isNewPasswordValid) {
@@ -447,35 +456,49 @@ function AuthPage() {
           <div>
             <h1 className="text-4xl font-medium tracking-tight md:text-5xl">Verify your email</h1>
             <p className="mt-3 text-sm text-ink-muted">
-              Enter the 6-digit code sent to <strong className="text-ink">{email}</strong>.
+              Enter the {otpLength}-digit code sent to <strong className="text-ink">{email}</strong>.
             </p>
 
             <form onSubmit={verifyOtp} className="mt-8 space-y-6">
               <div className="flex flex-col items-center gap-3">
-                <InputOTP maxLength={6} value={otp} onChange={(val) => setOtp(val)}>
+                <InputOTP maxLength={otpLength} value={otp} onChange={(val) => setOtp(val)}>
                   <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={0} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={1} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={2} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={3} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={4} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={5} className="h-12 w-12 border-ink/20 text-lg text-ink" />
+                    {Array.from({ length: otpLength }).map((_, i) => (
+                      <InputOTPSlot
+                        key={i}
+                        index={i}
+                        className={`${otpLength === 8 ? "h-11 w-10 text-base" : "h-12 w-12 text-lg"} border-ink/20 text-ink`}
+                      />
+                    ))}
                   </InputOTPGroup>
                 </InputOTP>
-                <button
-                  type="button"
-                  onClick={handlePasteClipboard}
-                  className="inline-flex items-center gap-1.5 text-xs text-ink-muted transition-colors hover:text-ink"
-                >
-                  <ClipboardPaste className="h-3.5 w-3.5" />
-                  Paste code from clipboard
-                </button>
+                <div className="flex items-center gap-3 text-xs">
+                  <button
+                    type="button"
+                    onClick={handlePasteClipboard}
+                    className="inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink cursor-pointer"
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" />
+                    Paste code
+                  </button>
+                  <span className="text-ink-muted/40">•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpLength((prev) => (prev === 6 ? 8 : 6));
+                      setOtp("");
+                    }}
+                    className="text-ink-muted transition-colors hover:text-ink cursor-pointer underline underline-offset-4"
+                  >
+                    {otpLength === 6 ? "Need 8 digits?" : "Switch to 6 digits"}
+                  </button>
+                </div>
               </div>
 
               <button
                 type="submit"
-                disabled={busy || otp.length < 6}
-                className="btn-ink w-full justify-center disabled:opacity-50"
+                disabled={busy || otp.length < otpLength}
+                className="btn-ink w-full justify-center disabled:opacity-50 cursor-pointer"
               >
                 {busy ? "Verifying…" : "Confirm & Sign In"}
               </button>
@@ -548,29 +571,43 @@ function AuthPage() {
           <div>
             <h1 className="text-4xl font-medium tracking-tight md:text-5xl">Reset password</h1>
             <p className="mt-3 text-sm text-ink-muted">
-              Enter the 6-digit code sent to <strong className="text-ink">{email}</strong> and pick a new password.
+              Enter the {otpLength}-digit code sent to <strong className="text-ink">{email}</strong> and pick a new password.
             </p>
 
             <form onSubmit={handlePasswordReset} className="mt-8 space-y-6">
               <div className="flex flex-col items-center gap-3">
-                <InputOTP maxLength={6} value={otp} onChange={(val) => setOtp(val)}>
+                <InputOTP maxLength={otpLength} value={otp} onChange={(val) => setOtp(val)}>
                   <InputOTPGroup className="gap-2">
-                    <InputOTPSlot index={0} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={1} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={2} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={3} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={4} className="h-12 w-12 border-ink/20 text-lg text-ink" />
-                    <InputOTPSlot index={5} className="h-12 w-12 border-ink/20 text-lg text-ink" />
+                    {Array.from({ length: otpLength }).map((_, i) => (
+                      <InputOTPSlot
+                        key={i}
+                        index={i}
+                        className={`${otpLength === 8 ? "h-11 w-10 text-base" : "h-12 w-12 text-lg"} border-ink/20 text-ink`}
+                      />
+                    ))}
                   </InputOTPGroup>
                 </InputOTP>
-                <button
-                  type="button"
-                  onClick={handlePasteClipboard}
-                  className="inline-flex items-center gap-1.5 text-xs text-ink-muted transition-colors hover:text-ink"
-                >
-                  <ClipboardPaste className="h-3.5 w-3.5" />
-                  Paste code from clipboard
-                </button>
+                <div className="flex items-center gap-3 text-xs">
+                  <button
+                    type="button"
+                    onClick={handlePasteClipboard}
+                    className="inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink cursor-pointer"
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" />
+                    Paste code
+                  </button>
+                  <span className="text-ink-muted/40">•</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpLength((prev) => (prev === 6 ? 8 : 6));
+                      setOtp("");
+                    }}
+                    className="text-ink-muted transition-colors hover:text-ink cursor-pointer underline underline-offset-4"
+                  >
+                    {otpLength === 6 ? "Need 8 digits?" : "Switch to 6 digits"}
+                  </button>
+                </div>
               </div>
 
               <div className="relative">
@@ -586,7 +623,7 @@ function AuthPage() {
                 <button
                   type="button"
                   onClick={() => setShowNewPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted transition-colors hover:text-ink focus:outline-none"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted transition-colors hover:text-ink focus:outline-none cursor-pointer"
                   aria-label={showNewPassword ? "Hide password" : "Show password"}
                   title={showNewPassword ? "Hide password" : "Show password"}
                 >
@@ -606,8 +643,8 @@ function AuthPage() {
 
               <button
                 type="submit"
-                disabled={busy || otp.length < 6 || !isNewPasswordValid}
-                className="btn-ink w-full justify-center disabled:opacity-50"
+                disabled={busy || otp.length < otpLength || !isNewPasswordValid}
+                className="btn-ink w-full justify-center disabled:opacity-50 cursor-pointer"
               >
                 {busy ? "Updating password…" : "Update Password & Sign In"}
               </button>

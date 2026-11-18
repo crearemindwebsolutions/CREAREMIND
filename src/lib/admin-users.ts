@@ -320,7 +320,7 @@ export async function fetchUsersAndDeletedFromCloud(): Promise<{
             const parsed = JSON.parse(row.url);
             const email = (
               parsed.email ||
-              row.original_filename?.replace(/^DELETED_/, "") ||
+              row.original_filename?.replace(/^DELETED_/, "")?.replace(/^PURGED_/, "") ||
               ""
             ).trim().toLowerCase();
             if (email) {
@@ -339,12 +339,27 @@ export async function fetchUsersAndDeletedFromCloud(): Promise<{
     const activeUsers: ManagedUser[] = [];
     const deletedUsers: DeletedUserRecord[] = [];
     const deletedEmails = new Set<string>();
+    const purgedEmails = new Set<string>();
 
     for (const [emailKey, rows] of rowsByEmail.entries()) {
       if (isDemoOrDummyEmail(emailKey)) continue;
 
       // The newest row is the authoritative state
       const newest = rows[0];
+
+      // 1. Check if permanently purged from system
+      const isPurged = Boolean(
+        newest?.isPurged ||
+        newest?.role === "Purged" ||
+        newest?.orig_fn?.startsWith("PURGED_")
+      );
+
+      if (isPurged) {
+        purgedEmails.add(emailKey);
+        continue; // Exclude from both Active Directory and Removed Accounts table!
+      }
+
+      // 2. Check if moved to Removed Accounts
       const isDeleted = Boolean(
         newest?.isDeleted ||
         newest?.role === "Deleted" ||
@@ -355,7 +370,7 @@ export async function fetchUsersAndDeletedFromCloud(): Promise<{
         deletedEmails.add(emailKey);
         // Find if any historical row contained their profile details
         const historicalActive = rows.find(
-          (r) => r.name && !r.isDeleted && r.role !== "Deleted"
+          (r) => r.name && !r.isDeleted && r.role !== "Deleted" && !r.isPurged
         );
         deletedUsers.push({
           id: newest.id || historicalActive?.id || format8DigitUserId(emailKey),
@@ -375,16 +390,19 @@ export async function fetchUsersAndDeletedFromCloud(): Promise<{
       }
     }
 
-    // Filter localUsers to purge deleted accounts from active cache
+    // Filter localUsers to purge deleted and permanently purged accounts from active cache
     const localUsers = getStoredUsers().filter(
       (u) =>
         !deletedEmails.has(u.email.trim().toLowerCase()) &&
+        !purgedEmails.has(u.email.trim().toLowerCase()) &&
         !isDemoOrDummyEmail(u.email.trim().toLowerCase())
     );
 
-    // Filter defaults so deleted accounts never resurrect in active list
+    // Filter defaults so deleted or purged accounts never resurrect in active list
     const defaultsNotDeleted = DEFAULT_MANAGED_USERS.filter(
-      (d) => !deletedEmails.has(d.email.trim().toLowerCase())
+      (d) =>
+        !deletedEmails.has(d.email.trim().toLowerCase()) &&
+        !purgedEmails.has(d.email.trim().toLowerCase())
     );
 
     const combinedActive = sanitizeAndDedupeUsers([
@@ -394,15 +412,21 @@ export async function fetchUsersAndDeletedFromCloud(): Promise<{
     ]).filter(
       (u) =>
         !deletedEmails.has(u.email.trim().toLowerCase()) &&
+        !purgedEmails.has(u.email.trim().toLowerCase()) &&
         !isDemoOrDummyEmail(u.email.trim().toLowerCase())
     );
 
+    // Ensure deleted accounts also exclude permanently purged records
+    const cleanedDeleted = deletedUsers.filter(
+      (d) => !purgedEmails.has(d.email.trim().toLowerCase())
+    );
+
     saveUsersToLocalStorage(combinedActive);
-    saveDeletedUsersToLocalStorage(deletedUsers);
+    saveDeletedUsersToLocalStorage(cleanedDeleted);
 
     return {
       activeUsers: combinedActive,
-      deletedUsers,
+      deletedUsers: cleanedDeleted,
     };
   } catch (err) {
     console.warn("Could not fetch users and deleted from Supabase cloud:", err);
@@ -487,9 +511,20 @@ export async function isUserAccountRevoked(email?: string): Promise<boolean> {
       for (const row of data) {
         try {
           const parsed = JSON.parse(row.url || "{}");
-          const rowEmail = (parsed.email || row.original_filename?.replace("DELETED_", "") || "").trim().toLowerCase();
+          const rowEmail = (
+            parsed.email ||
+            row.original_filename?.replace("DELETED_", "")?.replace("PURGED_", "") ||
+            ""
+          ).trim().toLowerCase();
           if (rowEmail === clean) {
-            if (parsed.isDeleted || parsed.role === "Deleted" || row.original_filename?.startsWith("DELETED_")) {
+            if (
+              parsed.isPurged ||
+              parsed.role === "Purged" ||
+              row.original_filename?.startsWith("PURGED_") ||
+              parsed.isDeleted ||
+              parsed.role === "Deleted" ||
+              row.original_filename?.startsWith("DELETED_")
+            ) {
               return true;
             }
             return false;
@@ -843,15 +878,69 @@ export async function restoreUserInCloud(
 }
 
 /**
- * Permanently purges a record from the Deleted Accounts table.
+ * Permanently purges a record from the Deleted Accounts table and Supabase cloud.
+ * Writes a permanent PURGED tombstone to Supabase so this account will NEVER resurrect
+ * in the Active Directory or Removed Accounts Table.
  */
-export function purgeDeletedUserRecord(email: string): boolean {
+export async function purgeDeletedUserRecord(email: string): Promise<boolean> {
   if (!email) return false;
   const cleanEmail = email.trim().toLowerCase();
+  const pubId = getEmailStorageKey(cleanEmail);
+
+  try {
+    // 1. Insert permanent PURGED tombstone row in Supabase
+    await supabasePublic.from("media").insert({
+      public_id: pubId,
+      resource_type: "user_account",
+      url: JSON.stringify({
+        email: cleanEmail,
+        isPurged: true,
+        isDeleted: true,
+        role: "Purged",
+        purgedAt: new Date().toISOString(),
+      }),
+      original_filename: `PURGED_${cleanEmail}`,
+    });
+  } catch (err) {
+    console.warn("Could not insert PURGED tombstone in Supabase:", err);
+  }
+
+  // 2. Clear from localStorage deleted accounts
   const currentDeleted = getStoredDeletedUsers().filter(
     (d) => d.email.toLowerCase() !== cleanEmail
   );
   saveDeletedUsersToLocalStorage(currentDeleted);
+
+  // 3. Clear from localStorage active accounts
+  const currentActive = getStoredUsers().filter(
+    (u) => u.email.toLowerCase() !== cleanEmail
+  );
+  saveUsersToLocalStorage(currentActive);
+
+  // 4. Broadcast purge event across tabs
+  try {
+    const bc = new BroadcastChannel("creare_admin_channel");
+    bc.postMessage({ type: "account_purged", email: cleanEmail });
+    bc.close();
+  } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("creare_account_purged", { detail: cleanEmail })
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Purges ALL accounts currently in the Deleted Accounts list.
+ */
+export async function purgeAllDeletedUserRecords(): Promise<boolean> {
+  const current = getStoredDeletedUsers();
+  for (const record of current) {
+    await purgeDeletedUserRecord(record.email);
+  }
   return true;
 }
 

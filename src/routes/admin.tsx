@@ -117,6 +117,7 @@ import {
   deleteUserFromCloud,
   restoreUserInCloud,
   purgeDeletedUserRecord,
+  purgeAllDeletedUserRecords,
   generateUnique8DigitId,
   exportUsersToCsv,
   sanitizeAndDedupeUsers,
@@ -729,12 +730,19 @@ function AdminPage() {
     const target = usersList.find((u) => u.id === id);
     if (!target) return;
     if (confirm(`Are you sure you want to remove user "${name}" (${id})? Their account will be revoked in Supabase and moved to the Removed Accounts table.`)) {
-      const updated = usersList.filter((u) => u.id !== id);
-      saveUsersList(updated);
-      await deleteUserFromCloud(id, target.email, target);
-      setDeletedUsersList(getStoredDeletedUsers());
-      recordAdminLog(user?.email || "admin@crearemind.in", "Deleted Customer", "Users", `Removed account ${name} (${id})`);
-      toast.success(`Removed user ${name}. Moved to Removed Accounts table.`);
+      setIsRefreshingUsers(true);
+      try {
+        await deleteUserFromCloud(id, target.email, target);
+        const { activeUsers, deletedUsers } = await fetchUsersAndDeletedFromCloud();
+        setUsersList(activeUsers);
+        setDeletedUsersList(deletedUsers);
+        recordAdminLog(user?.email || "admin@crearemind.in", "Deleted Customer", "Users", `Removed account ${name} (${id})`);
+        toast.success(`Removed user ${name}. Moved to Removed Accounts table.`);
+      } catch (err) {
+        toast.error("Failed to delete user");
+      } finally {
+        setIsRefreshingUsers(false);
+      }
     }
   };
 
@@ -758,11 +766,44 @@ function AdminPage() {
     }
   };
 
-  const handlePurgeDeletedUser = (email: string) => {
-    if (confirm(`Permanently remove record for ${email} from this view?`)) {
-      purgeDeletedUserRecord(email);
-      setDeletedUsersList(getStoredDeletedUsers());
-      toast.success(`Purged record for ${email}`);
+  const handlePurgeDeletedUser = async (email: string) => {
+    if (confirm(`Permanently remove record for ${email} from the system? This record will be permanently purged from Supabase and will not appear again.`)) {
+      setIsRefreshingUsers(true);
+      try {
+        const ok = await purgeDeletedUserRecord(email);
+        if (ok) {
+          const { activeUsers, deletedUsers } = await fetchUsersAndDeletedFromCloud();
+          setUsersList(activeUsers);
+          setDeletedUsersList(deletedUsers);
+          recordAdminLog(user?.email || "admin@crearemind.in", "Purged Account", "Users", `Permanently purged account ${email}`);
+          toast.success(`Permanently purged record for ${email}`);
+        } else {
+          toast.error("Failed to purge account from database.");
+        }
+      } catch {
+        toast.error("Failed to purge user account");
+      } finally {
+        setIsRefreshingUsers(false);
+      }
+    }
+  };
+
+  const handlePurgeAllDeleted = async () => {
+    if (deletedUsersList.length === 0) return;
+    if (confirm(`Are you sure you want to permanently purge all ${deletedUsersList.length} removed accounts from Supabase? This action cannot be undone.`)) {
+      setIsRefreshingUsers(true);
+      try {
+        await purgeAllDeletedUserRecords();
+        const { activeUsers, deletedUsers } = await fetchUsersAndDeletedFromCloud();
+        setUsersList(activeUsers);
+        setDeletedUsersList(deletedUsers);
+        recordAdminLog(user?.email || "admin@crearemind.in", "Purged All Removed Accounts", "Users", `Permanently purged all removed accounts`);
+        toast.success("Successfully purged all removed accounts!");
+      } catch {
+        toast.error("Failed to purge removed accounts");
+      } finally {
+        setIsRefreshingUsers(false);
+      }
     }
   };
 
@@ -2272,9 +2313,22 @@ function AdminPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-neutral-600 bg-amber-50/60 border border-amber-200/80 px-3 py-2 rounded-xl">
-                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>Removed accounts are revoked in Supabase. Click <strong>Restore Account</strong> to reactivate anytime.</span>
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+                      <div className="flex items-center gap-2 text-xs text-neutral-600 bg-amber-50/60 border border-amber-200/80 px-3 py-2 rounded-xl">
+                        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Removed accounts are revoked in Supabase. Click <strong>Restore Account</strong> to reactivate anytime.</span>
+                      </div>
+                      {deletedUsersList.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handlePurgeAllDeleted}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 shadow-2xs transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                          title="Permanently remove all deleted accounts from database"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Purge All ({deletedUsersList.length})</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
