@@ -31,7 +31,13 @@ export function AdminCommsView({ inquiries, adminEmail }: AdminCommsViewProps) {
   const latestInquiry = inquiries.length > 0 ? inquiries[0] : null;
 
   const [selectedTemplate, setSelectedTemplate] = useState<CommsTemplate>(
-    DEFAULT_COMMS_TEMPLATES[0]
+    DEFAULT_COMMS_TEMPLATES[0] ?? {
+      id: "proposal_initial",
+      name: "Initial Discovery & Proposal",
+      category: "Proposal",
+      subject: "Custom Digital Solution Proposal — Creare Mind Studio",
+      message: "Hello {{clientName}},\n\nThank you for reaching out to Creare Mind regarding {{serviceName}}.",
+    }
   );
   const [recipientName, setRecipientName] = useState(latestInquiry?.name || "");
   const [recipientPhone, setRecipientPhone] = useState(latestInquiry?.phone || "");

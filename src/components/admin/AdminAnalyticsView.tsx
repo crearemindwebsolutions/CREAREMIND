@@ -302,15 +302,15 @@ export function AdminAnalyticsView({
                   <YAxis tick={{ fontSize: 12, fill: "#6B7280" }} stroke="#E5E7EB" />
                   <Tooltip
                     content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
+                      if (active && payload && payload.length && payload[0]?.payload) {
                         return (
                           <div className="rounded-xl border border-neutral-200 bg-white p-3 shadow-lg text-xs">
                             <p className="font-bold text-neutral-900">{payload[0].payload.month}</p>
                             <p className="text-emerald-600 font-semibold mt-1">
-                              Revenue: ₹{payload[0].payload.revenue.toLocaleString("en-IN")}
+                              Revenue: ₹{payload[0].payload.revenue?.toLocaleString("en-IN") || "0"}
                             </p>
                             <p className="text-neutral-500">
-                              Inquiries: {payload[0].payload.inquiries} leads
+                              Inquiries: {payload[0].payload.inquiries ?? 0} leads
                             </p>
                           </div>
                         );

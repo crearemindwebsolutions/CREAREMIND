@@ -156,7 +156,7 @@ export function AdminProjectsView({
         currency: "INR",
         stage: formStage,
         progressPercent: Number(formProgress),
-        startDate: new Date().toISOString().split("T")[0],
+        startDate: new Date().toISOString().split("T")[0]!,
         targetDeliveryDate: formDeliveryDate,
         liveUrl: formLiveUrl,
         assignedLead: formLead,
@@ -189,16 +189,18 @@ export function AdminProjectsView({
 
   const handleAdvanceStage = (p: AdminProject) => {
     const currentIndex = STAGES.indexOf(p.stage);
-    if (currentIndex < STAGES.length - 1) {
+    if (currentIndex >= 0 && currentIndex < STAGES.length - 1) {
       const nextStage = STAGES[currentIndex + 1];
-      const nextProgress = Math.min(100, Math.round(((currentIndex + 2) / STAGES.length) * 100));
-      const updated = projects.map((item) =>
-        item.id === p.id ? { ...item, stage: nextStage, progressPercent: nextProgress } : item
-      );
-      onProjectsChange(updated);
-      saveProjectsList(updated);
-      recordAdminLog(adminEmail, "Advanced Project Stage", "Projects", `Advanced ${p.id} to ${nextStage}`);
-      toast.success(`Project moved to ${nextStage}`);
+      if (nextStage) {
+        const nextProgress = Math.min(100, Math.round(((currentIndex + 2) / STAGES.length) * 100));
+        const updated = projects.map((item) =>
+          item.id === p.id ? { ...item, stage: nextStage, progressPercent: nextProgress } : item
+        );
+        onProjectsChange(updated);
+        saveProjectsList(updated);
+        recordAdminLog(adminEmail, "Advanced Project Stage", "Projects", `Advanced ${p.id} to ${nextStage}`);
+        toast.success(`Project moved to ${nextStage}`);
+      }
     }
   };
 
