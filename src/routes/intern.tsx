@@ -590,6 +590,10 @@ function InternWorkspacePage({ user, managedUser, onLockWorkspace }: InternWorks
               projects={store.projects}
               schedule={store.schedule}
               attendance={store.attendance}
+              isCheckedIn={store.isCheckedIn}
+              checkInTime={store.checkInTime}
+              checkOutTime={store.checkOutTime}
+              onToggleCheckIn={store.toggleCheckIn}
               onSelectTab={(tab) => {
                 setCurrentTab(tab);
                 window.scrollTo({ top: 0, behavior: "smooth" });

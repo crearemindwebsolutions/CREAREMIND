@@ -38,7 +38,7 @@ export function InternAttendanceView({
   const attendancePercentage =
     totalWorkingDays > 0
       ? ((presentDays / totalWorkingDays) * 100).toFixed(1)
-      : "100.0";
+      : null;
 
   const handleApplyLeave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,10 +115,14 @@ export function InternAttendanceView({
             Attendance Rate
           </span>
           <span className="mt-1 text-2xl font-bold text-neutral-900 font-['Plus_Jakarta_Sans',sans-serif] tabular-nums block">
-            {attendancePercentage}%
+            {attendancePercentage ? `${attendancePercentage}%` : "—"}
           </span>
-          <span className="mt-1 block text-[11px] text-emerald-600 font-medium">
-            Exceeds 85% requirement
+          <span className="mt-1 block text-[11px] font-medium text-neutral-400">
+            {attendancePercentage
+              ? Number(attendancePercentage) >= 85
+                ? "Exceeds 85% requirement"
+                : "Below 85% requirement"
+              : "Awaiting first shift log"}
           </span>
         </div>
 

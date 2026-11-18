@@ -35,6 +35,10 @@ interface InternOverviewViewProps {
   projects: InternProject[];
   schedule: ScheduleItem[];
   attendance?: AttendanceDay[];
+  isCheckedIn?: boolean;
+  checkInTime?: string;
+  checkOutTime?: string;
+  onToggleCheckIn?: () => void;
   onSelectTab: (tab: InternNavTab) => void;
   onOpenTaskModal: (task: InternTask) => void;
   onOpenProjectModal: () => void;
@@ -47,6 +51,10 @@ export function InternOverviewView({
   projects,
   schedule,
   attendance = [],
+  isCheckedIn = false,
+  checkInTime = "",
+  checkOutTime = "",
+  onToggleCheckIn,
   onSelectTab,
   onOpenTaskModal,
   onOpenProjectModal,
@@ -78,7 +86,7 @@ export function InternOverviewView({
   const totalTasksCount = tasks.length;
   const completionRate =
     totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
-  const daysPresent = attendance.filter((a) => a.status === "present").length || 3;
+  const daysPresent = attendance.filter((a) => a.status === "present").length;
   const deadlinesAtRisk = tasks.filter(
     (t) => t.priority === "High" && t.status !== "Completed"
   ).length;
@@ -189,13 +197,25 @@ export function InternOverviewView({
         <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-neutral-600">Attendance</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 grid place-items-center text-amber-600">
+            <div
+              className={`w-8 h-8 rounded-xl ${
+                isCheckedIn
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-600"
+                  : "bg-amber-50 border border-amber-200 text-amber-600"
+              } grid place-items-center transition-colors`}
+            >
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-neutral-900">{daysPresent}</div>
-            <p className="text-[11px] text-neutral-400 mt-0.5">days present this month</p>
+            <div className="text-2xl sm:text-3xl font-extrabold text-neutral-900">
+              {daysPresent > 0 ? daysPresent : "0"}
+            </div>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              {daysPresent > 0
+                ? `${daysPresent} day${daysPresent > 1 ? "s" : ""} present this month`
+                : "days present this month"}
+            </p>
           </div>
         </div>
 
@@ -433,14 +453,22 @@ export function InternOverviewView({
 
               <button
                 type="button"
-                onClick={() => onSelectTab("attendance")}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl border border-neutral-200/80 hover:border-neutral-900 hover:bg-neutral-50 transition-colors cursor-pointer font-semibold text-neutral-800"
+                onClick={onToggleCheckIn ? onToggleCheckIn : () => onSelectTab("attendance")}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl border transition-colors cursor-pointer font-semibold ${
+                  isCheckedIn
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70"
+                    : "border-neutral-200/80 hover:border-neutral-900 hover:bg-neutral-50 text-neutral-800"
+                }`}
               >
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-600" />
-                  <span>Daily Attendance Clock-In</span>
+                  <Clock className={`w-4 h-4 ${isCheckedIn ? "text-emerald-600" : "text-amber-600"}`} />
+                  <span>
+                    {isCheckedIn
+                      ? `Clocked In (${checkInTime || "Active"})`
+                      : "Daily Attendance Clock-In"}
+                  </span>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-neutral-400" />
+                <ArrowUpRight className={`w-4 h-4 ${isCheckedIn ? "text-emerald-700" : "text-neutral-400"}`} />
               </button>
 
               <button
