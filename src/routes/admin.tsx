@@ -5,6 +5,7 @@ import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { supabasePublic } from "@/lib/supabase-public";
 import { isAdmin, PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
+import { getUserRoleAsync } from "@/lib/admin-users";
 import { format8DigitUserId } from "@/lib/user-id";
 import {
   useSiteContent,
@@ -193,7 +194,17 @@ type AdminTab =
 function AdminPage() {
   const { user, ready } = useSession();
   const navigate = useNavigate();
-  const userIsAdmin = isAdmin(user);
+  const [asyncRole, setAsyncRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    if (isAdmin(user)) return;
+    getUserRoleAsync(user.email).then((role) => {
+      setAsyncRole(role);
+    });
+  }, [user?.email]);
+
+  const userIsAdmin = isAdmin(user) || asyncRole === "Super Admin" || asyncRole === "Admin";
 
   const { content, updateContent, updateSection, resetToDefaults } = useSiteContent();
 
@@ -1026,8 +1037,7 @@ function AdminPage() {
           </div>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-900">Restricted Administrative Area</h1>
           <p className="mt-2 text-xs text-neutral-600 leading-relaxed">
-            This panel is exclusively reserved for the primary system administrator (
-            <strong className="text-neutral-900">{PRIMARY_ADMIN_EMAIL}</strong>).
+            This panel is exclusively reserved for authorized Creare Mind administrators.
           </p>
           <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3.5 text-left text-xs">
             <p className="text-[11px] font-mono text-neutral-500 uppercase tracking-wider">Current Account</p>

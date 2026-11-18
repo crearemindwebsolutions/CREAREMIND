@@ -651,7 +651,7 @@ function ProfilePage() {
         )}
 
         {/* Tab: Admin Portal */}
-        {activeTab === "admin" && userIsAdmin && (
+        {activeTab === "admin" && isElevatedAdmin && (
           <div className="rounded-2xl border border-indigo-500/25 bg-paper p-6 md:p-8 animate-in fade-in duration-300 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink/10 pb-6">
               <div>

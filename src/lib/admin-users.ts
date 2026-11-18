@@ -34,6 +34,16 @@ export const DEFAULT_MANAGED_USERS: ManagedUser[] = [
     joinedDate: "15 Oct 2026",
     company: "Creare Mind Founder",
   },
+  {
+    id: "80721960",
+    name: "Ajith",
+    email: "ajith2801p@gmail.com",
+    phone: "—",
+    provider: "Google OAuth",
+    role: "Super Admin",
+    joinedDate: "18 Nov 2026",
+    company: "Creare Mind Leadership",
+  },
 ];
 
 const STORAGE_KEY = "creare_admin_users_list";
