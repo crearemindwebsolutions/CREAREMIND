@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { supabasePublic } from "@/lib/supabase-public";
-import { isAdmin, PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
+import { isAdmin, PRIMARY_ADMIN_EMAIL, ADMIN_EMAILS } from "@/lib/admin";
 import { getUserRoleAsync } from "@/lib/admin-users";
 import { format8DigitUserId } from "@/lib/user-id";
 import {
