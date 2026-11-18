@@ -1089,10 +1089,8 @@ function AdminPage() {
       <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 backdrop-blur-md px-4 sm:px-8 py-3.5 shadow-xs">
         <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-sm font-bold tracking-tight text-neutral-900 hover:opacity-80 transition-opacity flex items-center gap-2">
-              <span className="inline-flex items-center justify-center rounded-lg bg-neutral-900 px-1.5 py-1">
-                <LogoMark className="h-3.5 w-auto" />
-              </span>
+            <Link to="/" className="text-sm font-bold tracking-tight text-neutral-900 hover:opacity-80 transition-opacity flex items-center gap-2.5">
+              <LogoMark className="h-[18px] w-auto shrink-0" />
               <span className="font-mono text-xs uppercase tracking-widest text-neutral-900 font-bold">CREARE MIND</span>
             </Link>
             <span className="h-4 w-px bg-neutral-200" />
