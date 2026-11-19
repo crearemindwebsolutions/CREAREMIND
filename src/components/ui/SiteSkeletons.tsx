@@ -350,6 +350,63 @@ export function InternSkeleton() {
 }
 
 /**
+ * Authentication Skeleton (`/auth`)
+ * Displayed during Google OAuth round-trips, login state verification, and role redirects
+ */
+export function AuthSkeleton({ message = "Signing you in securely…" }: { message?: string }) {
+  return (
+    <section className="grid min-h-screen place-items-center bg-paper px-5 pb-20 pt-32 text-ink">
+      <div className="w-full max-w-md space-y-6 animate-in fade-in duration-200">
+        {/* Brand Header Placeholder */}
+        <div className="flex items-center gap-3">
+          <Skeleton variant="dark" className="h-7 w-7 rounded-full shrink-0" />
+          <Skeleton variant="light" className="h-4 w-28 rounded-md" />
+        </div>
+
+        {/* Title & Subtitle */}
+        <div className="space-y-2 pt-2">
+          <Skeleton variant="light" className="h-10 sm:h-12 w-3/4 rounded-xl" />
+          <Skeleton variant="light" className="h-4 w-5/6 rounded-md" />
+        </div>
+
+        {/* Dynamic Status Banner */}
+        <div className="flex items-center gap-3.5 rounded-xl border border-ink/10 bg-paper-2/70 p-4 shadow-2xs">
+          <div className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-ink/20 border-t-ink" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-ink">{message}</p>
+            <p className="text-[11px] text-ink-muted">Verifying credentials and loading your workspace…</p>
+          </div>
+        </div>
+
+        {/* Google OAuth Button Placeholder */}
+        <Skeleton variant="light" className="h-12 w-full rounded-md border border-ink/10" />
+
+        {/* Divider */}
+        <div className="my-6 flex items-center gap-4">
+          <div className="h-px flex-1 bg-ink/10" />
+          <Skeleton variant="light" className="h-3 w-6 rounded-xs" />
+          <div className="h-px flex-1 bg-ink/10" />
+        </div>
+
+        {/* Form Inputs Skeletons */}
+        <div className="space-y-3.5">
+          <Skeleton variant="light" className="h-12 w-full rounded-md" />
+          <Skeleton variant="light" className="h-12 w-full rounded-md" />
+        </div>
+
+        {/* Action Button Skeleton */}
+        <Skeleton variant="dark" className="h-12 w-full rounded-md" />
+
+        {/* Footer Helper Links */}
+        <div className="pt-2 flex justify-center">
+          <Skeleton variant="light" className="h-4 w-36 rounded-md" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
  * Universal Route Pending Component.
  * Automatically inspects current URL and serves the matching skeleton loader!
  */
@@ -359,6 +416,7 @@ export function RootPendingSkeleton() {
     if (path.startsWith("/admin")) return <AdminSkeleton />;
     if (path.startsWith("/intern")) return <InternSkeleton />;
     if (path.startsWith("/profile")) return <ProfileSkeleton />;
+    if (path.startsWith("/auth")) return <AuthSkeleton />;
     if (path === "/") return <HomeSkeleton />;
   }
   return <PageSkeleton />;

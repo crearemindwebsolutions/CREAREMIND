@@ -10,7 +10,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { PageSkeleton } from "@/components/ui/SiteSkeletons";
+import { PageSkeleton, AuthSkeleton } from "@/components/ui/SiteSkeletons";
 
 interface PasswordRules {
   minLength: boolean;
@@ -135,7 +135,7 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   component: AuthPage,
-  pendingComponent: PageSkeleton,
+  pendingComponent: AuthSkeleton,
 });
 
 function AuthPage() {
@@ -152,6 +152,20 @@ function AuthPage() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isOAuthCallback] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      return (
+        hash.includes("access_token") ||
+        search.includes("code=") ||
+        sessionStorage.getItem("oauth_redirecting") === "true"
+      );
+    }
+    return false;
+  });
 
   const passwordRules = checkPasswordRules(password);
   const passwordScore = getStrengthScore(passwordRules);
@@ -163,6 +177,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (user && user.email) {
+      setIsRedirecting(true);
       let isMounted = true;
       (async () => {
         try {
@@ -175,6 +190,7 @@ function AuthPage() {
         const role = await getUserRoleAsync(user.email!);
         if (!isMounted) return;
 
+        sessionStorage.removeItem("oauth_redirecting");
         const p = sessionStorage.getItem("postAuth");
         sessionStorage.removeItem("postAuth");
         const targetDest = (redirect && redirect !== "/" && redirect !== "/profile" && redirect !== "/services" && redirect !== "/auth")
@@ -401,13 +417,19 @@ function AuthPage() {
 
   const google = async () => {
     sessionStorage.setItem("postAuth", redirect);
+    sessionStorage.setItem("oauth_redirecting", "true");
+    setIsGoogleSigningIn(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth`,
       },
     });
-    if (error) setMsg({ ok: false, t: error.message ?? "Google sign-in failed" });
+    if (error) {
+      sessionStorage.removeItem("oauth_redirecting");
+      setIsGoogleSigningIn(false);
+      setMsg({ ok: false, t: error.message ?? "Google sign-in failed" });
+    }
   };
 
   useEffect(() => {
@@ -439,6 +461,21 @@ function AuthPage() {
   }, [redirect]);
 
   const input = "h-12 w-full border border-ink/20 bg-paper px-4 text-sm text-ink outline-none transition-colors focus:border-ink";
+
+  // During Google OAuth redirect, callback processing, or user role verification, display skeleton loading
+  if (isGoogleSigningIn || isRedirecting || isOAuthCallback || Boolean(user?.email)) {
+    return (
+      <AuthSkeleton
+        message={
+          isGoogleSigningIn
+            ? "Connecting to Google… Redirecting to sign-in"
+            : isRedirecting || Boolean(user?.email)
+            ? "Signed in! Opening your workspace…"
+            : "Processing Google authentication…"
+        }
+      />
+    );
+  }
 
   return (
     <section className="grid min-h-screen place-items-center bg-paper px-5 pb-20 pt-32 text-ink">
@@ -654,15 +691,25 @@ function AuthPage() {
 
             <button
               onClick={google}
-              className="mt-8 flex h-12 w-full items-center justify-center gap-3 border border-ink/20 text-sm font-medium transition-colors hover:bg-paper-2"
+              disabled={busy || isGoogleSigningIn}
+              className="mt-8 flex h-12 w-full items-center justify-center gap-3 border border-ink/20 text-sm font-medium transition-colors hover:bg-paper-2 disabled:opacity-60 cursor-pointer"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-                <path
-                  fill="currentColor"
-                  d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14zM12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 5.9 12 5.9z"
-                />
-              </svg>
-              Continue with Google
+              {isGoogleSigningIn ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-ink/20 border-t-ink" />
+                  <span>Connecting to Google…</span>
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+                    <path
+                      fill="currentColor"
+                      d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14zM12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 5.9 12 5.9z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </>
+              )}
             </button>
             <div className="my-6 flex items-center gap-4 text-xs text-ink-muted">
               <span className="h-px flex-1 bg-ink/15" />or<span className="h-px flex-1 bg-ink/15" />
