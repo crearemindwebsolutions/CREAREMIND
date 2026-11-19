@@ -1,19 +1,19 @@
-# Creare Mind Branded Email Templates & 4-Digit OTP Setup Guide
+# Creare Mind Branded Email Templates & 6-Digit OTP Setup Guide
 
-This guide explains how to configure Supabase to send **4-digit verification codes** and use the **official Creare Mind branded email templates**.
+This guide explains how to configure Supabase to send **6-digit verification codes** and use the **official Creare Mind branded email templates**.
 
 ---
 
-## 1. How to Change Verification Code to 4 Digits in Supabase
+## 1. How to Ensure Verification Code is Strictly 6 Digits in Supabase
 
 1. Log in to your [Supabase Dashboard](https://supabase.com/dashboard/project/lnfdtleuoyjkqmuonhnt).
 2. In the left navigation sidebar under **CONFIGURATION**, click **Sign In / Providers**.
 3. Under the **Auth Providers** list, click on **Email**.
 4. Scroll down until you find the setting **"Email OTP length"** (or `Mailer OTP Length`).
-5. Change the number to **`4`**.
+5. Ensure the number is set to **`6`**.
 6. Click **Save** at the bottom of the page.
 
-*Now all future verification codes sent by Supabase will strictly be 4 digits!*
+*Now all verification codes sent by Supabase will strictly be 6 digits!*
 
 ---
 

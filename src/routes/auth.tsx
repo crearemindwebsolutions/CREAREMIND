@@ -236,7 +236,7 @@ function AuthPage() {
         }
         if (!data.session) {
           setMode("otp");
-          setMsg({ ok: true, t: "We've sent a 4-digit verification code to your email." });
+          setMsg({ ok: true, t: "We've sent a 6-digit verification code to your email." });
         }
       }
     } else {
@@ -294,8 +294,8 @@ function AuthPage() {
   const verifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otp.trim().replace(/\D/g, "");
-    if (cleanOtp.length < 4) {
-      setMsg({ ok: false, t: "Please enter the complete 4-digit code." });
+    if (cleanOtp.length < 6) {
+      setMsg({ ok: false, t: "Please enter the complete 6-digit code." });
       return;
     }
     setBusy(true); setMsg(null);
@@ -325,14 +325,14 @@ function AuthPage() {
       email,
     });
     if (error) setMsg({ ok: false, t: error.message });
-    else setMsg({ ok: true, t: "A new 4-digit verification code has been sent to your email." });
+    else setMsg({ ok: true, t: "A new 6-digit verification code has been sent to your email." });
     setBusy(false);
   };
 
   const handlePasteClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      const digits = text.replace(/\D/g, "").slice(0, 4);
+      const digits = text.replace(/\D/g, "").slice(0, 6);
       if (digits) {
         setOtp(digits);
         setMsg(null);
@@ -354,15 +354,15 @@ function AuthPage() {
     } else {
       setMode("reset");
       setOtp("");
-      setMsg({ ok: true, t: "We've sent a 4-digit recovery code to your email." });
+      setMsg({ ok: true, t: "We've sent a 6-digit recovery code to your email." });
     }
   };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otp.trim().replace(/\D/g, "");
-    if (cleanOtp.length < 4) {
-      setMsg({ ok: false, t: "Please enter the complete 4-digit recovery code." });
+    if (cleanOtp.length < 6) {
+      setMsg({ ok: false, t: "Please enter the complete 6-digit recovery code." });
       return;
     }
     if (!isNewPasswordValid) {
@@ -447,18 +447,18 @@ function AuthPage() {
           <div>
             <h1 className="text-4xl font-medium tracking-tight md:text-5xl">Verify your email</h1>
             <p className="mt-3 text-sm text-ink-muted">
-              Enter the 4-digit code sent to <strong className="text-ink">{email}</strong>.
+              Enter the 6-digit code sent to <strong className="text-ink">{email}</strong>.
             </p>
 
             <form onSubmit={verifyOtp} className="mt-8 space-y-6">
               <div className="flex flex-col items-center gap-3">
-                <InputOTP maxLength={4} value={otp} onChange={(val) => setOtp(val)}>
-                  <InputOTPGroup className="gap-2.5 sm:gap-3">
-                    {[0, 1, 2, 3].map((i) => (
+                <InputOTP maxLength={6} value={otp} onChange={(val) => setOtp(val)}>
+                  <InputOTPGroup className="gap-2 sm:gap-2.5">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
                       <InputOTPSlot
                         key={i}
                         index={i}
-                        className="h-14 w-12 sm:h-16 sm:w-14 text-2xl font-bold border-ink/20 text-ink rounded-lg"
+                        className="h-12 w-10 sm:h-14 sm:w-12 text-xl sm:text-2xl font-bold border-ink/20 text-ink rounded-lg"
                       />
                     ))}
                   </InputOTPGroup>
@@ -470,14 +470,14 @@ function AuthPage() {
                     className="inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink cursor-pointer"
                   >
                     <ClipboardPaste className="h-3.5 w-3.5" />
-                    Paste 4-digit code
+                    Paste 6-digit code
                   </button>
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={busy || otp.length < 4}
+                disabled={busy || otp.length < 6}
                 className="btn-ink w-full justify-center disabled:opacity-50 cursor-pointer"
               >
                 {busy ? "Verifying…" : "Confirm & Sign In"}
@@ -512,7 +512,7 @@ function AuthPage() {
           <div>
             <h1 className="text-4xl font-medium tracking-tight md:text-5xl">Forgot password?</h1>
             <p className="mt-3 text-sm text-ink-muted">
-              Enter your email address and we&apos;ll send you a 4-digit recovery code.
+              Enter your email address and we&apos;ll send you a 6-digit recovery code.
             </p>
 
             <form onSubmit={requestPasswordReset} className="mt-8 space-y-4">
@@ -551,18 +551,18 @@ function AuthPage() {
           <div>
             <h1 className="text-4xl font-medium tracking-tight md:text-5xl">Reset password</h1>
             <p className="mt-3 text-sm text-ink-muted">
-              Enter the 4-digit code sent to <strong className="text-ink">{email}</strong> and pick a new password.
+              Enter the 6-digit code sent to <strong className="text-ink">{email}</strong> and pick a new password.
             </p>
 
             <form onSubmit={handlePasswordReset} className="mt-8 space-y-6">
               <div className="flex flex-col items-center gap-3">
-                <InputOTP maxLength={4} value={otp} onChange={(val) => setOtp(val)}>
-                  <InputOTPGroup className="gap-2.5 sm:gap-3">
-                    {[0, 1, 2, 3].map((i) => (
+                <InputOTP maxLength={6} value={otp} onChange={(val) => setOtp(val)}>
+                  <InputOTPGroup className="gap-2 sm:gap-2.5">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
                       <InputOTPSlot
                         key={i}
                         index={i}
-                        className="h-14 w-12 sm:h-16 sm:w-14 text-2xl font-bold border-ink/20 text-ink rounded-lg"
+                        className="h-12 w-10 sm:h-14 sm:w-12 text-xl sm:text-2xl font-bold border-ink/20 text-ink rounded-lg"
                       />
                     ))}
                   </InputOTPGroup>
@@ -574,7 +574,7 @@ function AuthPage() {
                     className="inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink cursor-pointer"
                   >
                     <ClipboardPaste className="h-3.5 w-3.5" />
-                    Paste 4-digit code
+                    Paste 6-digit code
                   </button>
                 </div>
               </div>
@@ -612,7 +612,7 @@ function AuthPage() {
 
               <button
                 type="submit"
-                disabled={busy || otp.length < 4 || !isNewPasswordValid}
+                disabled={busy || otp.length < 6 || !isNewPasswordValid}
                 className="btn-ink w-full justify-center disabled:opacity-50 cursor-pointer"
               >
                 {busy ? "Updating password…" : "Update Password & Sign In"}
