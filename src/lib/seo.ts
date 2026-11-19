@@ -22,7 +22,7 @@ export const SCHEMA_ORGANIZATION = {
         "crearemind.in"
       ],
       "url": SITE_URL,
-      "logo": `${SITE_URL}/favicon.png`,
+      "logo": `${SITE_URL}/icon-512.png`,
       "image": DEFAULT_OG_IMAGE,
       "description":
         "Creare Mind is a software development and digital agency that builds custom websites, mobile apps, shop billing POS systems, video editing, and social media management for ambitious businesses.",
