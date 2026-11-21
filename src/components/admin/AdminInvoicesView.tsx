@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Receipt,
   RefreshCw,
+  PieChart,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -27,9 +28,11 @@ import {
   type InvoiceType,
   saveInvoicesList,
   fetchInvoicesFromCloud,
+  buildDefaultInvoiceSplit,
 } from "@/lib/admin-invoices";
 import { recordAdminLog } from "@/lib/admin-logs";
 import { buildWhatsAppLink } from "@/lib/admin-comms";
+import { InvoiceSplitModal } from "./InvoiceSplitModal";
 
 interface AdminInvoicesViewProps {
   invoices: AdminInvoice[];
@@ -47,6 +50,7 @@ export function AdminInvoicesView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState<AdminInvoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<AdminInvoice | null>(null);
+  const [splitInvoice, setSplitInvoice] = useState<AdminInvoice | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Form states
@@ -166,35 +170,54 @@ export function AdminInvoicesView({
     const amountPaid = formStatus === "Paid" ? total : 0;
 
     if (editingInvoice) {
-      const updated = invoices.map((inv) =>
-        inv.id === editingInvoice.id
+      const updated = invoices.map((inv) => {
+        if (inv.id !== editingInvoice.id) return inv;
+        const companyAmount = Math.round(total * 0.30);
+        const teamAmount = total - companyAmount;
+        const updatedSplit = inv.split
           ? {
-              ...inv,
-              type: formType,
-              invoiceNumber: formNumber,
-              clientName: formClientName,
-              clientCompany: formClientCompany,
-              clientEmail: formClientEmail,
-              clientPhone: formClientPhone,
-              clientGst: formClientGst,
-              issueDate: formIssueDate || inv.issueDate,
-              dueDate: formDueDate || inv.dueDate,
-              status: formStatus,
-              items: formItems,
-              subtotal,
-              gstPercent: formGstPercent,
-              gstAmount,
-              total,
-              amountPaid: formStatus === "Paid" ? total : inv.amountPaid,
-              notes: formNotes,
+              ...inv.split,
+              projectName: formClientCompany || formClientName || inv.split.projectName || "Project",
+              companyPercentage: 30,
+              companyAmount,
+              teamPercentage: 70,
+              teamAmount,
+              members: (inv.split.members || []).map((m) => ({
+                ...m,
+                amount: Math.round(((m.percentageOfTeam || 0) / 100) * teamAmount),
+              })),
+              updatedAt: new Date().toISOString(),
             }
-          : inv
-      );
+          : buildDefaultInvoiceSplit(total, formClientCompany, formClientName, formItems[0]?.description);
+
+        return {
+          ...inv,
+          type: formType,
+          invoiceNumber: formNumber,
+          clientName: formClientName,
+          clientCompany: formClientCompany,
+          clientEmail: formClientEmail,
+          clientPhone: formClientPhone,
+          clientGst: formClientGst,
+          issueDate: formIssueDate || inv.issueDate,
+          dueDate: formDueDate || inv.dueDate,
+          status: formStatus,
+          items: formItems,
+          subtotal,
+          gstPercent: formGstPercent,
+          gstAmount,
+          total,
+          amountPaid: formStatus === "Paid" ? total : inv.amountPaid,
+          notes: formNotes,
+          split: updatedSplit,
+        };
+      });
       onInvoicesChange(updated);
       saveInvoicesList(updated);
       recordAdminLog(adminEmail, "Updated Invoice", "Invoices", `Updated ${formNumber} for ${formClientName}`);
       toast.success("Invoice updated successfully");
     } else {
+      const initialSplit = buildDefaultInvoiceSplit(total, formClientCompany, formClientName, formItems[0]?.description);
       const newInv: AdminInvoice = {
         id: `CM-INV-2026-${Math.floor(100 + Math.random() * 900)}`,
         type: formType,
@@ -217,12 +240,20 @@ export function AdminInvoicesView({
         notes: formNotes,
         upiId: "8072719603@upi",
         createdAt: Date.now(),
+        split: initialSplit,
       };
       const updated = [newInv, ...invoices];
       onInvoicesChange(updated);
       saveInvoicesList(updated);
-      recordAdminLog(adminEmail, "Generated Invoice", "Invoices", `Generated ${newInv.invoiceNumber} (₹${total.toLocaleString("en-IN")})`);
-      toast.success("New invoice generated");
+      recordAdminLog(
+        adminEmail,
+        "Generated Invoice",
+        "Invoices",
+        `Generated ${newInv.invoiceNumber} (₹${total.toLocaleString("en-IN")}) • 30% Company Wallet share = ₹${initialSplit.companyAmount.toLocaleString("en-IN")}`
+      );
+      toast.success(
+        `Invoice generated! 30% (₹${initialSplit.companyAmount.toLocaleString("en-IN")}) automatically credited to Company Wallet.`
+      );
     }
 
     setIsModalOpen(false);
@@ -429,6 +460,23 @@ export function AdminInvoicesView({
                           title="Preview & Print Invoice"
                         >
                           <Printer className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setSplitInvoice(inv)}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                            inv.split?.members && inv.split.members.length > 0
+                              ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                              : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-300/80"
+                          }`}
+                          title="Revenue Split (30% Company / 70% Team)"
+                        >
+                          <PieChart className="h-3 w-3 text-emerald-600" />
+                          <span>Split</span>
+                          {inv.split?.members && inv.split.members.length > 0 ? (
+                            <span className="rounded-full bg-emerald-200/80 px-1 text-[9px] font-mono text-emerald-900">
+                              {inv.split.members.length}
+                            </span>
+                          ) : null}
                         </button>
                         <button
                           onClick={() => handleWhatsAppInvoice(inv)}
@@ -801,6 +849,20 @@ export function AdminInvoicesView({
             </form>
           </div>
         </div>
+      )}
+      {/* INVOICE SPLIT MODAL (30% COMPANY / 70% PARTNERS) */}
+      {splitInvoice && (
+        <InvoiceSplitModal
+          invoice={splitInvoice}
+          isOpen={true}
+          onClose={() => setSplitInvoice(null)}
+          onSaveSplit={(updated) => {
+            const next = invoices.map((i) => (i.id === updated.id ? updated : i));
+            onInvoicesChange(next);
+            setSplitInvoice(null);
+          }}
+          adminEmail={adminEmail}
+        />
       )}
     </div>
   );

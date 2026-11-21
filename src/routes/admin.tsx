@@ -80,6 +80,8 @@ import {
   Activity,
   RotateCcw,
   UserX,
+  Wallet,
+  PieChart,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -126,6 +128,7 @@ import { recordAdminLog } from "@/lib/admin-logs";
 import { AdminAnalyticsView } from "@/components/admin/AdminAnalyticsView";
 import { AdminProjectsView } from "@/components/admin/AdminProjectsView";
 import { AdminInvoicesView } from "@/components/admin/AdminInvoicesView";
+import { AdminWalletView } from "@/components/admin/AdminWalletView";
 import { AdminCommsView } from "@/components/admin/AdminCommsView";
 import { AdminSeoView } from "@/components/admin/AdminSeoView";
 import { AdminLogsView } from "@/components/admin/AdminLogsView";
@@ -216,6 +219,7 @@ type AdminTab =
   | "inquiries"
   | "projects"
   | "invoices"
+  | "wallet"
   | "comms"
   | "seo"
   | "users"
@@ -1317,6 +1321,7 @@ function AdminPage() {
                 { id: "inquiries", label: "Client Inquiries", icon: Inbox, count: inquiriesList.length },
                 { id: "projects", label: "Projects & Milestones", icon: Briefcase, count: projectsList.length },
                 { id: "invoices", label: "Quotations & Invoices", icon: Receipt, count: invoicesList.length },
+                { id: "wallet", label: "Company Wallet", icon: Wallet, count: invoicesList.length },
                 { id: "comms", label: "WhatsApp Desk", icon: MessageSquare },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -1474,6 +1479,18 @@ function AdminPage() {
               invoices={invoicesList}
               onInvoicesChange={(updated) => setInvoicesList(updated)}
               adminEmail={user?.email || "admin@crearemind.in"}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: COMPANY WALLET & REVENUE SPLIT (30% COMPANY / 70% TEAM)*/}
+          {/* ============================================================ */}
+          {activeTab === "wallet" && (
+            <AdminWalletView
+              invoices={invoicesList}
+              onInvoicesChange={(updated) => setInvoicesList(updated)}
+              adminEmail={user?.email || "admin@crearemind.in"}
+              onNavigateTab={(tab) => setActiveTab(tab as AdminTab)}
             />
           )}
 

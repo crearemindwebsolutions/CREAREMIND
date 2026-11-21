@@ -10,6 +10,7 @@ import {
   ExternalLink,
   ArrowRight,
   AlertCircle,
+  Wallet,
 } from "lucide-react";
 import {
   AreaChart,
@@ -140,6 +141,13 @@ export function AdminAnalyticsView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => onNavigateTab("wallet")}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 px-3.5 py-2 text-xs font-semibold text-emerald-800 shadow-xs cursor-pointer transition-colors"
+          >
+            <Wallet className="h-3.5 w-3.5 text-emerald-700" />
+            Company Wallet (30%)
+          </button>
           <button
             onClick={() => onNavigateTab("invoices")}
             className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 px-3.5 py-2 text-xs font-semibold text-neutral-700 shadow-xs cursor-pointer transition-colors"

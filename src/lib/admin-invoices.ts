@@ -11,6 +11,25 @@ export interface InvoiceItem {
 export type InvoiceStatus = "Paid" | "Pending" | "Partial" | "Overdue" | "Draft";
 export type InvoiceType = "Tax Invoice" | "Formal Quotation" | "Proforma Invoice";
 
+export interface InvoiceMemberSplit {
+  id: string;
+  name: string;
+  percentageOfTeam: number; // e.g. 50 (of the 70% pool)
+  percentageOfTotal: number; // e.g. 35 (of total invoice)
+  amount: number; // calculated INR
+}
+
+export interface InvoiceSplitData {
+  projectName: string;
+  companyPercentage: number; // 30
+  companyAmount: number; // 30% of total
+  teamPercentage: number; // 70
+  teamAmount: number; // 70% of total
+  members: InvoiceMemberSplit[];
+  notes?: string;
+  updatedAt?: string;
+}
+
 export interface AdminInvoice {
   id: string; // e.g. "CM-INV-2026-081"
   type: InvoiceType;
@@ -34,6 +53,62 @@ export interface AdminInvoice {
   paymentBankDetails?: string;
   upiId?: string;
   createdAt: number;
+  split?: InvoiceSplitData;
+}
+
+export function getInvoiceCompanyShare(invoice: AdminInvoice): number {
+  if (invoice.split && typeof invoice.split.companyAmount === "number") {
+    return invoice.split.companyAmount;
+  }
+  return Math.round((invoice.total || 0) * 0.30);
+}
+
+export function getInvoiceTeamShare(invoice: AdminInvoice): number {
+  if (invoice.split && typeof invoice.split.teamAmount === "number") {
+    return invoice.split.teamAmount;
+  }
+  return Math.round((invoice.total || 0) * 0.70);
+}
+
+export function getInvoiceProjectName(invoice: AdminInvoice): string {
+  if (invoice.split?.projectName && invoice.split.projectName.trim()) {
+    return invoice.split.projectName.trim();
+  }
+  if (invoice.clientCompany && invoice.clientCompany.trim()) {
+    return invoice.clientCompany.trim();
+  }
+  if (invoice.clientName && invoice.clientName.trim()) {
+    return invoice.clientName.trim();
+  }
+  if (invoice.items && invoice.items[0]?.description?.trim()) {
+    return invoice.items[0].description.trim();
+  }
+  return "Creare Mind Project";
+}
+
+export function buildDefaultInvoiceSplit(
+  total: number,
+  clientCompany?: string,
+  clientName?: string,
+  itemDesc?: string
+): InvoiceSplitData {
+  const companyAmount = Math.round(total * 0.30);
+  const teamAmount = total - companyAmount;
+  const projectName =
+    (clientCompany && clientCompany.trim()) ||
+    (clientName && clientName.trim()) ||
+    (itemDesc && itemDesc.trim()) ||
+    "Creare Mind Project";
+
+  return {
+    projectName,
+    companyPercentage: 30,
+    companyAmount,
+    teamPercentage: 70,
+    teamAmount,
+    members: [],
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 const STORAGE_KEY = "creare_admin_invoices";
