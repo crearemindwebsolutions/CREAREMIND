@@ -407,8 +407,8 @@ body,
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
+    height: 100% !important;
+    min-height: 100% !important;
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -436,14 +436,15 @@ body,
     position: static !important;
     inset: auto !important;
     display: block !important;
-    background: transparent !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
     backdrop-filter: none !important;
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
-    max-height: none !important;
+    min-height: 100% !important;
     overflow: visible !important;
     box-shadow: none !important;
     z-index: auto !important;
@@ -459,7 +460,8 @@ body,
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: transparent !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
     overflow: visible !important;
     max-height: none !important;
   }
@@ -472,7 +474,8 @@ body,
     max-height: none !important;
     height: auto !important;
     width: 100% !important;
-    background: transparent !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
   }
 
   #printable-invoice-sheet {
@@ -486,6 +489,7 @@ body,
     box-shadow: none !important;
     border-radius: 0 !important;
     background: #ffffff !important;
+    background-color: #ffffff !important;
     font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     page-break-after: avoid !important;
     break-after: avoid !important;

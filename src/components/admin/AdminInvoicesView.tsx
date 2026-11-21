@@ -87,9 +87,21 @@ export function AdminInvoicesView({
     if (previewInvoice) {
       const handleBeforePrint = () => {
         document.body.classList.add("printing-invoice");
+        if (typeof document !== "undefined") {
+          document.documentElement.style.setProperty("background-color", "#ffffff", "important");
+          document.documentElement.style.setProperty("background", "#ffffff", "important");
+          document.body.style.setProperty("background-color", "#ffffff", "important");
+          document.body.style.setProperty("background", "#ffffff", "important");
+        }
       };
       const handleAfterPrint = () => {
         document.body.classList.remove("printing-invoice");
+        if (typeof document !== "undefined") {
+          document.documentElement.style.setProperty("background-color", "#F8F7F4", "important");
+          document.documentElement.style.removeProperty("background");
+          document.body.style.setProperty("background-color", "#F8F7F4", "important");
+          document.body.style.removeProperty("background");
+        }
       };
       window.addEventListener("beforeprint", handleBeforePrint);
       window.addEventListener("afterprint", handleAfterPrint);
@@ -97,6 +109,12 @@ export function AdminInvoicesView({
         window.removeEventListener("beforeprint", handleBeforePrint);
         window.removeEventListener("afterprint", handleAfterPrint);
         document.body.classList.remove("printing-invoice");
+        if (typeof document !== "undefined") {
+          document.documentElement.style.setProperty("background-color", "#F8F7F4", "important");
+          document.documentElement.style.removeProperty("background");
+          document.body.style.setProperty("background-color", "#F8F7F4", "important");
+          document.body.style.removeProperty("background");
+        }
       };
     }
   }, [previewInvoice]);
@@ -104,9 +122,21 @@ export function AdminInvoicesView({
   const handlePrintInvoice = () => {
     if (!previewInvoice) return;
     document.body.classList.add("printing-invoice");
+    if (typeof document !== "undefined") {
+      document.documentElement.style.setProperty("background-color", "#ffffff", "important");
+      document.documentElement.style.setProperty("background", "#ffffff", "important");
+      document.body.style.setProperty("background-color", "#ffffff", "important");
+      document.body.style.setProperty("background", "#ffffff", "important");
+    }
     window.print();
     setTimeout(() => {
       document.body.classList.remove("printing-invoice");
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty("background-color", "#F8F7F4", "important");
+        document.documentElement.style.removeProperty("background");
+        document.body.style.setProperty("background-color", "#F8F7F4", "important");
+        document.body.style.removeProperty("background");
+      }
     }, 1200);
   };
 
@@ -596,9 +626,9 @@ export function AdminInvoicesView({
       {previewInvoice && typeof document !== "undefined" && createPortal(
         <div
           id="printable-invoice-portal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto print:fixed-none print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:overflow-visible print:backdrop-blur-none"
         >
-          <div className="relative w-full max-w-3xl rounded-2xl border border-neutral-200/90 bg-white text-neutral-900 shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-neutral-200/90 bg-white text-neutral-900 shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col print:border-none print:shadow-none print:rounded-none print:max-h-none print:m-0 print:p-0 print:w-full print:max-w-full print:bg-white print:overflow-visible">
             {/* Modal Controls Bar (Hidden on Print) */}
             <div className="no-print shrink-0 flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-neutral-200 bg-neutral-50/90">
               <div className="flex items-center gap-2">
@@ -641,12 +671,12 @@ export function AdminInvoicesView({
             </div>
 
             {/* Scrollable Preview Wrapper (Natural flow during print) */}
-            <div id="printable-invoice-sheet-container" className="overflow-y-auto flex-1 p-4 sm:p-7">
+            <div id="printable-invoice-sheet-container" className="overflow-y-auto flex-1 p-4 sm:p-7 print:p-0 print:m-0 print:overflow-visible print:bg-white print:w-full print:max-w-full">
               {/* Printable Invoice Sheet - Ultra-Luxury, Minimalist Studio Design (Strictly Fits 1 Page) */}
               <div
                 id="printable-invoice-sheet"
                 style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
-                className="w-full max-w-[720px] mx-auto bg-white text-neutral-900 space-y-3.5"
+                className="w-full max-w-[720px] mx-auto bg-white text-neutral-900 space-y-3.5 print:max-w-full print:w-full print:m-0 print:p-0 print:bg-white"
               >
                 {/* Header: Brand Mark & Studio Details + Invoice Reference */}
                 <div className="flex justify-between items-start border-b border-neutral-900/15 pb-3.5">

@@ -196,7 +196,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark" style={{ backgroundColor: "#07080a" }}>
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
         <script
@@ -208,11 +208,22 @@ function RootShell({ children }: { children: ReactNode }) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              html, body {
-                background-color: #07080a !important;
-                color: #ffffff;
-                margin: 0;
-                padding: 0;
+              @media screen {
+                html, body {
+                  background-color: #07080a !important;
+                  color: #ffffff;
+                  margin: 0;
+                  padding: 0;
+                }
+              }
+              @media print {
+                html, body {
+                  background: #ffffff !important;
+                  background-color: #ffffff !important;
+                  color: #000000 !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
               }
               /* Eliminate flash of unstyled video and media on page refresh */
               video[data-hero-video]:not([data-active="true"]) {
@@ -227,7 +238,7 @@ function RootShell({ children }: { children: ReactNode }) {
           }}
         />
       </head>
-      <body style={{ backgroundColor: "#07080a" }}>
+      <body>
         {children}
         <Scripts />
       </body>
