@@ -264,10 +264,10 @@ export function InvoiceSplitModal({
               </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 font-semibold">
+              <p className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">
                 Total Invoice Gross
               </p>
-              <p className="text-sm font-extrabold text-neutral-950 mt-0.5 font-mono">
+              <p className="text-base font-bold text-neutral-950 mt-0.5 font-sans tabular-nums">
                 ₹{total.toLocaleString("en-IN")}
               </p>
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold mt-1 ${
@@ -304,7 +304,7 @@ export function InvoiceSplitModal({
                     <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
                       🏢 Creare Mind Company Wallet
                     </h3>
-                    <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold font-mono">
+                    <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold">
                       30% Automatic
                     </span>
                   </div>
@@ -318,10 +318,10 @@ export function InvoiceSplitModal({
               </div>
 
               <div className="text-right sm:pl-4 sm:border-l sm:border-emerald-200">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-emerald-700 font-semibold">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">
                   Company Share (30%)
                 </p>
-                <p className="text-lg font-black text-emerald-950 font-mono tracking-tight">
+                <p className="text-xl font-bold text-emerald-950 font-sans tabular-nums tracking-tight">
                   +₹{companyAmount.toLocaleString("en-IN")}
                 </p>
                 <p className="text-[10px] text-emerald-600 font-medium">Automatic Company Cut</p>
@@ -339,7 +339,7 @@ export function InvoiceSplitModal({
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-2">
                     👥 Team &amp; Partner Distribution
-                    <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.2 text-[10px] font-bold font-mono">
+                    <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.2 text-[10px] font-bold">
                       70% Pool
                     </span>
                   </h3>
@@ -350,8 +350,8 @@ export function InvoiceSplitModal({
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] font-mono text-neutral-500 uppercase">Available Pool: </span>
-                <span className="text-xs font-bold text-neutral-900 font-mono">
+                <span className="text-[11px] text-neutral-500 uppercase">Available Pool: </span>
+                <span className="text-sm font-bold text-neutral-900 font-sans tabular-nums">
                   ₹{teamAmount.toLocaleString("en-IN")}
                 </span>
               </div>
@@ -417,7 +417,7 @@ export function InvoiceSplitModal({
                   <div className="w-full sm:w-28">
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-medium text-neutral-600">Share of 70%</label>
-                      <span className="text-[10px] font-mono text-neutral-400">%</span>
+                      <span className="text-[10px] text-neutral-400">%</span>
                     </div>
                     <div className="relative">
                       <input
@@ -427,19 +427,19 @@ export function InvoiceSplitModal({
                         step="any"
                         value={member.percentageOfTeam}
                         onChange={(e) => handleUpdatePercentage(member.id, e.target.value)}
-                        className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 font-mono font-bold focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900 text-right pr-6"
+                        className="w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs text-neutral-900 font-sans font-bold tabular-nums focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900 text-right pr-6"
                       />
-                      <span className="absolute right-2 top-2 text-xs font-mono text-neutral-400 pointer-events-none">
+                      <span className="absolute right-2 top-2 text-xs text-neutral-400 pointer-events-none">
                         %
                       </span>
                     </div>
                   </div>
 
-                  <div className="w-full sm:w-32 bg-white rounded-lg border border-neutral-200/80 p-1.5 text-right flex sm:flex-col justify-between items-center sm:items-end">
-                    <span className="text-[9px] font-mono text-neutral-400 uppercase">
+                  <div className="w-full sm:w-36 bg-white rounded-lg border border-neutral-200/80 p-2 text-right flex sm:flex-col justify-between items-center sm:items-end">
+                    <span className="text-[10px] text-neutral-500 font-medium">
                       {member.percentageOfTotal}% of total
                     </span>
-                    <span className="text-xs font-bold text-neutral-900 font-mono">
+                    <span className="text-sm font-bold text-neutral-950 font-sans tabular-nums">
                       ₹{member.amount.toLocaleString("en-IN")}
                     </span>
                   </div>

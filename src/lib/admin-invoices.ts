@@ -74,14 +74,26 @@ export function getInvoiceProjectName(invoice: AdminInvoice): string {
   if (invoice.split?.projectName && invoice.split.projectName.trim()) {
     return invoice.split.projectName.trim();
   }
-  if (invoice.clientCompany && invoice.clientCompany.trim()) {
-    return invoice.clientCompany.trim();
+  const company = invoice.clientCompany?.trim();
+  const name = invoice.clientName?.trim();
+  const desc = invoice.items && invoice.items[0]?.description?.trim();
+
+  // If company is text (not just digits/phone)
+  if (company && !/^\d+$/.test(company)) {
+    return company;
   }
-  if (invoice.clientName && invoice.clientName.trim()) {
-    return invoice.clientName.trim();
+  // If name is text
+  if (name && !/^\d+$/.test(name)) {
+    return name;
   }
-  if (invoice.items && invoice.items[0]?.description?.trim()) {
-    return invoice.items[0].description.trim();
+  if (desc) {
+    return desc;
+  }
+  if (name) {
+    return name;
+  }
+  if (company) {
+    return company;
   }
   return "Creare Mind Project";
 }

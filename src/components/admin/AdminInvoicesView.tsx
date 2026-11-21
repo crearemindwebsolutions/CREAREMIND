@@ -418,7 +418,7 @@ export function AdminInvoicesView({
               <tbody className="divide-y divide-neutral-100">
                 {filteredInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-neutral-50/80 transition-colors">
-                    <td className="px-4 py-3.5 font-mono font-bold text-neutral-900">
+                    <td className="px-4 py-3.5 font-sans font-semibold text-neutral-900">
                       {inv.invoiceNumber}
                     </td>
                     <td className="px-4 py-3.5">
@@ -432,10 +432,10 @@ export function AdminInvoicesView({
                         {inv.type}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-neutral-500">
+                    <td className="px-4 py-3.5 text-neutral-500 font-sans">
                       {inv.issueDate}
                     </td>
-                    <td className="px-4 py-3.5 font-mono font-bold text-neutral-900">
+                    <td className="px-4 py-3.5 font-sans font-bold text-neutral-900 tabular-nums">
                       ₹{inv.total.toLocaleString("en-IN")}
                     </td>
                     <td className="px-4 py-3.5">
