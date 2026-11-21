@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Wallet,
   Building2,
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Clock,
   ArrowUpRight,
+  ArrowDownRight,
   Sparkles,
   RefreshCw,
   ChevronRight,
@@ -24,6 +25,11 @@ import {
   Calendar,
   Layers,
   ArrowRight,
+  Trash2,
+  AlertCircle,
+  FileText,
+  Tag,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -36,6 +42,16 @@ import {
   getInvoicePendingCompanyShare,
   fetchInvoicesFromCloud,
 } from "@/lib/admin-invoices";
+import {
+  type WalletExpense,
+  type ExpenseCategory,
+  EXPENSE_CATEGORIES,
+  getStoredExpenses,
+  fetchExpensesFromCloud,
+  saveExpenseToCloud,
+  deleteExpenseFromCloud,
+  getTotalExpensesAmount,
+} from "@/lib/admin-wallet-expenses";
 import { InvoiceSplitModal } from "./InvoiceSplitModal";
 import { InvoicePhasesModal } from "./InvoicePhasesModal";
 
@@ -54,11 +70,33 @@ export function AdminWalletView({
 }: AdminWalletViewProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
-  const [activeSubTab, setActiveSubTab] = useState<"projects" | "partners">("projects");
+  const [activeSubTab, setActiveSubTab] = useState<"projects" | "partners" | "expenses">("projects");
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [selectedInvoiceForSplit, setSelectedInvoiceForSplit] = useState<AdminInvoice | null>(null);
   const [phasesModalInvoice, setPhasesModalInvoice] = useState<AdminInvoice | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Company Wallet Expenses & Audit Trail
+  const [expenses, setExpenses] = useState<WalletExpense[]>(() => getStoredExpenses());
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseSearch, setExpenseSearch] = useState("");
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState<string>("All");
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
+
+  // New Expense Form State
+  const [expTitle, setExpTitle] = useState("");
+  const [expAmount, setExpAmount] = useState<string>("");
+  const [expCategory, setExpCategory] = useState<ExpenseCategory>("Cloud & Hosting");
+  const [expSpentBy, setExpSpentBy] = useState(() => (adminEmail ? adminEmail.split("@")[0] : "Ajith"));
+  const [expDate, setExpDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [expInvoiceRef, setExpInvoiceRef] = useState("");
+  const [expNotes, setExpNotes] = useState("");
+
+  useEffect(() => {
+    fetchExpensesFromCloud().then((cloud) => {
+      if (cloud && cloud.length > 0) setExpenses(cloud);
+    });
+  }, []);
 
   // Calculations
   const totalInvoicedGross = invoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
@@ -75,6 +113,11 @@ export function AdminWalletView({
     if (paidAmt >= (inv.total || 0)) return acc + getInvoiceTeamShare(inv);
     return acc + Math.round(paidAmt * 0.70);
   }, 0);
+
+  // Expenses & Net Wallet Balance
+  const totalExpenses = useMemo(() => getTotalExpensesAmount(expenses), [expenses]);
+  const availableNetCompanyShare = Math.max(0, totalCompanyShareGross - totalExpenses);
+  const availableRealizedNet = Math.max(0, realizedCompanyShare - totalExpenses);
 
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
@@ -173,15 +216,88 @@ export function AdminWalletView({
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const cloud = await fetchInvoicesFromCloud();
-      onInvoicesChange(cloud);
-      toast.success("Wallet & revenue ledger refreshed from cloud");
+      const [cloudInvoices, cloudExpenses] = await Promise.all([
+        fetchInvoicesFromCloud(),
+        fetchExpensesFromCloud(),
+      ]);
+      onInvoicesChange(cloudInvoices);
+      if (cloudExpenses) setExpenses(cloudExpenses);
+      toast.success("Wallet, revenue & company expenses refreshed from cloud");
     } catch {
       toast.error("Could not sync latest ledger");
     } finally {
       setIsRefreshing(false);
     }
   };
+
+  const handleSaveNewExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(expAmount);
+    if (!expTitle.trim() || isNaN(amt) || amt <= 0) {
+      toast.error("Please enter a valid expense title and amount");
+      return;
+    }
+
+    setIsSavingExpense(true);
+    const randId = Math.floor(100 + Math.random() * 900);
+    const newExpense: WalletExpense = {
+      id: `EXP-2026-${randId}`,
+      title: expTitle.trim(),
+      amount: Math.round(amt),
+      category: expCategory,
+      spentBy: expSpentBy.trim() || "Company Admin",
+      date: expDate,
+      createdAt: Date.now(),
+      invoiceRef: expInvoiceRef.trim() || undefined,
+      notes: expNotes.trim() || undefined,
+      status: "Audited",
+    };
+
+    const nextExpenses = [newExpense, ...expenses];
+    setExpenses(nextExpenses);
+    await saveExpenseToCloud(newExpense);
+    toast.success(`Expense ₹${newExpense.amount.toLocaleString("en-IN")} logged and audited against wallet`);
+
+    // Reset form
+    setExpTitle("");
+    setExpAmount("");
+    setExpInvoiceRef("");
+    setExpNotes("");
+    setIsSavingExpense(false);
+    setIsExpenseModalOpen(false);
+  };
+
+  const handleDeleteExpense = async (id: string, title: string) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to remove the expense "${title}"? The amount will be restored to the Company Wallet balance.`
+      )
+    ) {
+      return;
+    }
+    const nextExpenses = expenses.filter((e) => e.id !== id);
+    setExpenses(nextExpenses);
+    await deleteExpenseFromCloud(id);
+    toast.success(`Expense "${title}" removed. Wallet balance restored.`);
+  };
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((exp) => {
+      const q = expenseSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        exp.title.toLowerCase().includes(q) ||
+        exp.spentBy.toLowerCase().includes(q) ||
+        (exp.notes || "").toLowerCase().includes(q) ||
+        (exp.invoiceRef || "").toLowerCase().includes(q) ||
+        exp.id.toLowerCase().includes(q);
+
+      const matchesCategory =
+        expenseCategoryFilter === "All" || exp.category === expenseCategoryFilter;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [expenses, expenseSearch, expenseCategoryFilter]);
 
   const handleSaveSplit = (updated: AdminInvoice) => {
     const nextList = invoices.map((inv) => (inv.id === updated.id ? updated : inv));
@@ -232,43 +348,74 @@ export function AdminWalletView({
 
       {/* Top Metric Cards - Clean Sans Numbers with Tabular Alignment */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Company Share Card */}
-        <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/20 p-5 shadow-xs">
+        {/* Net Available Wallet Balance Card */}
+        <div className="rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/30 p-5 shadow-xs relative">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider text-emerald-800 font-bold">
-              Company Wallet (30%)
+              Available Wallet Balance (Net)
             </span>
-            <div className="rounded-xl bg-emerald-600 text-white p-2 shadow-xs">
-              <Building2 className="h-4 w-4" />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsExpenseModalOpen(true)}
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-1 text-[10px] font-bold shadow-2xs transition-all cursor-pointer"
+                title="Record new company expenditure"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Log Spend</span>
+              </button>
+              <div className="rounded-xl bg-emerald-600 text-white p-1.5 shadow-xs">
+                <Wallet className="h-4 w-4" />
+              </div>
             </div>
           </div>
           <div className="mt-3">
             <p className="text-3xl font-bold text-emerald-950 font-sans tracking-tight tabular-nums">
-              ₹{totalCompanyShareGross.toLocaleString("en-IN")}
+              ₹{availableNetCompanyShare.toLocaleString("en-IN")}
             </p>
             <p className="text-xs text-emerald-700 mt-1 font-medium flex items-center gap-1">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              Auto-credited from {invoices.length} invoices
+              Net after ₹{totalExpenses.toLocaleString("en-IN")} audited company spends
             </p>
           </div>
         </div>
 
-        {/* Realized Company Inflow */}
+        {/* Audited Company Spends */}
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-wider text-rose-700 font-bold">
+              Audited Company Spends
+            </span>
+            <div className="rounded-xl bg-rose-50 text-rose-600 p-2 border border-rose-100">
+              <ArrowDownRight className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-3xl font-bold text-rose-750 font-sans tracking-tight tabular-nums text-rose-700">
+              -₹{totalExpenses.toLocaleString("en-IN")}
+            </p>
+            <p className="text-xs text-neutral-500 mt-1">
+              Across {expenses.length} audited expenditure records
+            </p>
+          </div>
+        </div>
+
+        {/* Total Company Share Card */}
         <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">
-              Settled / Realized Inflow
+              Gross 30% Inflow
             </span>
-            <div className="rounded-xl bg-blue-50 text-blue-600 p-2 border border-blue-100">
-              <CheckCircle2 className="h-4 w-4" />
+            <div className="rounded-xl bg-neutral-100 text-neutral-700 p-2 border border-neutral-200">
+              <Building2 className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3">
             <p className="text-3xl font-bold text-neutral-900 font-sans tracking-tight tabular-nums">
-              ₹{realizedCompanyShare.toLocaleString("en-IN")}
+              ₹{totalCompanyShareGross.toLocaleString("en-IN")}
             </p>
-            <p className="text-xs text-neutral-500 mt-1">
-              From {paidInvoices.length} fully settled invoices
+            <p className="text-xs text-neutral-500 mt-1 font-medium flex items-center gap-1">
+              <span className="text-emerald-700 font-bold">₹{realizedCompanyShare.toLocaleString("en-IN")}</span> settled to date
             </p>
           </div>
         </div>
@@ -289,26 +436,6 @@ export function AdminWalletView({
             </p>
             <p className="text-xs text-neutral-500 mt-1">
               Allocated across {partnerBreakdown.length} team members
-            </p>
-          </div>
-        </div>
-
-        {/* Total Invoiced Volume */}
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-neutral-500 font-bold">
-              Total Invoiced Billing
-            </span>
-            <div className="rounded-xl bg-amber-50 text-amber-600 p-2 border border-amber-100">
-              <DollarSign className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-3xl font-bold text-neutral-900 font-sans tracking-tight tabular-nums">
-              ₹{totalInvoicedGross.toLocaleString("en-IN")}
-            </p>
-            <p className="text-xs text-neutral-500 mt-1">
-              ₹{pendingCompanyShare.toLocaleString("en-IN")} company share pending
             </p>
           </div>
         </div>
@@ -338,6 +465,26 @@ export function AdminWalletView({
               }`}
             >
               👥 Partner Payout Breakdown ({partnerBreakdown.length})
+            </button>
+            <button
+              onClick={() => setActiveSubTab("expenses")}
+              className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeSubTab === "expenses"
+                  ? "bg-rose-950 text-white shadow-xs"
+                  : "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/80"
+              }`}
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>🧾 Company Spends &amp; Audit Log</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  activeSubTab === "expenses"
+                    ? "bg-white/20 text-white"
+                    : "bg-rose-200 text-rose-900"
+                }`}
+              >
+                {expenses.length}
+              </span>
             </button>
           </div>
 
@@ -783,7 +930,383 @@ export function AdminWalletView({
             </div>
           </div>
         )}
+
+        {/* VIEW 3: COMPANY SPENDS & AUDIT TRAIL */}
+        {activeSubTab === "expenses" && (
+          <div className="space-y-5">
+            {/* Action Bar: Search, Category Filter, and Record Spend Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-50 p-3.5 rounded-2xl border border-neutral-200">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1">
+                {/* Search */}
+                <div className="relative min-w-[220px] max-w-sm flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by expense, spender, ID, or purpose..."
+                    value={expenseSearch}
+                    onChange={(e) => setExpenseSearch(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  />
+                  {expenseSearch && (
+                    <button
+                      onClick={() => setExpenseSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Filter */}
+                <div className="flex items-center gap-1.5">
+                  <Filter className="h-3.5 w-3.5 text-neutral-400" />
+                  <select
+                    value={expenseCategoryFilter}
+                    onChange={(e) => setExpenseCategoryFilter(e.target.value)}
+                    className="rounded-xl border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  >
+                    <option value="All">All Categories ({expenses.length})</option>
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat} ({expenses.filter((e) => e.category === cat).length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Record Spend CTA Button */}
+              <button
+                type="button"
+                onClick={() => setIsExpenseModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white px-4 py-2 text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Record Company Spend</span>
+              </button>
+            </div>
+
+            {/* Expenses Table or Empty State */}
+            {filteredExpenses.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-neutral-300 p-10 text-center space-y-3 bg-neutral-50/50">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
+                  <Receipt className="h-6 w-6" />
+                </div>
+                <div className="max-w-md mx-auto">
+                  <h4 className="text-sm font-bold text-neutral-900">
+                    {expenses.length === 0 ? "No Company Expenses Recorded Yet" : "No Matching Expenses Found"}
+                  </h4>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {expenses.length === 0
+                      ? "Every expenditure spent on behalf of Creare Mind (cloud hosting, software subscriptions, office supplies, travel) is audited and logged here."
+                      : "Try adjusting your search query or category filter."}
+                  </p>
+                </div>
+                {expenses.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsExpenseModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 text-white px-4 py-2 text-xs font-semibold shadow-xs hover:bg-neutral-800 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Log First Expense
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-neutral-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] uppercase text-neutral-500 font-bold tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Audit ID &amp; Date</th>
+                      <th className="py-3 px-4">Expense Item</th>
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">Authorized By</th>
+                      <th className="py-3 px-4 text-right">Amount Deducted</th>
+                      <th className="py-3 px-4">Purpose / Reference</th>
+                      <th className="py-3 px-4 text-center">Audit Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 bg-white">
+                    {filteredExpenses.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-neutral-50/70 transition-colors">
+                        {/* Audit ID & Date */}
+                        <td className="py-3.5 px-4">
+                          <p className="font-mono text-xs font-bold text-neutral-950">{exp.id}</p>
+                          <p className="text-[11px] text-neutral-500 font-sans mt-0.5">{exp.date}</p>
+                        </td>
+
+                        {/* Title */}
+                        <td className="py-3.5 px-4 font-semibold text-neutral-950">
+                          {exp.title}
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-100 text-neutral-700 border border-neutral-200">
+                            {exp.category}
+                          </span>
+                        </td>
+
+                        {/* Authorized By */}
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 text-purple-800 border border-purple-200/80 px-2 py-0.5 text-xs font-semibold">
+                            <span className="h-1.5 w-1.5 rounded-full bg-purple-600" />
+                            {exp.spentBy}
+                          </span>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="py-3.5 px-4 text-right">
+                          <span className="font-bold text-rose-700 font-sans text-sm tabular-nums">
+                            -₹{exp.amount.toLocaleString("en-IN")}
+                          </span>
+                        </td>
+
+                        {/* Notes / Reference */}
+                        <td className="py-3.5 px-4 max-w-xs">
+                          {exp.invoiceRef && (
+                            <span className="inline-block rounded bg-neutral-100 text-neutral-700 font-mono text-[10px] px-1.5 py-0.5 border border-neutral-200 mr-1.5 mb-0.5">
+                              {exp.invoiceRef}
+                            </span>
+                          )}
+                          <span className="text-neutral-600 text-xs truncate">
+                            {exp.notes || "Operational expenditure"}
+                          </span>
+                        </td>
+
+                        {/* Audit Status */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            Audited
+                          </span>
+                        </td>
+
+                        {/* Action: Delete */}
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExpense(exp.id, exp.title)}
+                            className="rounded-lg p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Remove & restore to wallet"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Reconciliation Footer Card */}
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white shrink-0">
+                  <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-neutral-950 text-xs">Creare Mind Corporate Treasury Audit Desk</h5>
+                  <p className="text-[11px] text-neutral-500">
+                    All debits and spends are validated against Company Wallet receipts and backed up to cloud ledger.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs font-sans">
+                <div className="bg-white px-3 py-1.5 rounded-xl border border-neutral-200">
+                  <span className="text-neutral-500">Gross 30% Inflow:</span>{" "}
+                  <strong className="text-neutral-900 font-bold tabular-nums">
+                    ₹{totalCompanyShareGross.toLocaleString("en-IN")}
+                  </strong>
+                </div>
+                <div className="bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200">
+                  <span className="text-rose-700">Total Audited Spends:</span>{" "}
+                  <strong className="text-rose-800 font-bold tabular-nums">
+                    -₹{totalExpenses.toLocaleString("en-IN")}
+                  </strong>
+                </div>
+                <div className="bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-300">
+                  <span className="text-emerald-800 font-semibold">Net Available:</span>{" "}
+                  <strong className="text-emerald-950 font-black text-sm tabular-nums">
+                    ₹{availableNetCompanyShare.toLocaleString("en-IN")}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* RECORD COMPANY EXPENSE / WALLET DEBIT MODAL */}
+      {isExpenseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl max-h-[92vh] overflow-y-auto space-y-5">
+            <div className="flex items-center justify-between pb-3.5 border-b border-neutral-100">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-600 text-white shadow-xs">
+                  <Receipt className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-neutral-950">Record Company Spend</h3>
+                  <p className="text-xs text-neutral-500">Deducts and audits amount from Company Wallet</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExpenseModalOpen(false)}
+                className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewExpense} className="space-y-4 text-xs">
+              {/* Expense Title */}
+              <div>
+                <label className="block font-bold text-neutral-800 mb-1">
+                  Expense Item / Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. AWS & Vercel Cloud Server Hosting"
+                  value={expTitle}
+                  onChange={(e) => setExpTitle(e.target.value)}
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                />
+              </div>
+
+              {/* Amount & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-neutral-800 mb-1">
+                    Amount (₹ INR) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold font-sans">₹</span>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 3500"
+                      value={expAmount}
+                      onChange={(e) => setExpAmount(e.target.value)}
+                      className="w-full rounded-xl border border-neutral-300 bg-white pl-7 pr-3 py-2 text-xs text-neutral-900 font-sans font-bold tabular-nums focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-neutral-800 mb-1">
+                    Category <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={expCategory}
+                    onChange={(e) => setExpCategory(e.target.value as ExpenseCategory)}
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900 font-medium"
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Authorized By & Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-neutral-800 mb-1">
+                    Authorized / Spent By
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ajith or Gowthaman"
+                    value={expSpentBy}
+                    onChange={(e) => setExpSpentBy(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-neutral-800 mb-1">
+                    Date of Expense
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={expDate}
+                    onChange={(e) => setExpDate(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 font-sans focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  />
+                </div>
+              </div>
+
+              {/* Linked Project / Invoice Reference */}
+              <div>
+                <label className="block font-bold text-neutral-800 mb-1">
+                  Linked Project / Invoice Reference (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. CM/2026/935 or General Studio Operations"
+                  value={expInvoiceRef}
+                  onChange={(e) => setExpInvoiceRef(e.target.value)}
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                />
+              </div>
+
+              {/* Notes / Purpose */}
+              <div>
+                <label className="block font-bold text-neutral-800 mb-1">
+                  Audit Purpose / Notes
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Explain why this expense was made from company wallet..."
+                  value={expNotes}
+                  onChange={(e) => setExpNotes(e.target.value)}
+                  className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900 resize-none"
+                />
+              </div>
+
+              {/* Warning note */}
+              <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-3 text-[11px] text-amber-900 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  This will deduct <strong>₹{expAmount ? Number(expAmount).toLocaleString("en-IN") : "0"}</strong> from the Creare Mind Company Wallet and add a permanent entry in the corporate audit trail.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setIsExpenseModalOpen(false)}
+                  className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingExpense}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white px-4 py-2 text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span>{isSavingExpense ? "Auditing..." : "Audit & Deduct from Wallet"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Split Modal */}
       {selectedInvoiceForSplit && (

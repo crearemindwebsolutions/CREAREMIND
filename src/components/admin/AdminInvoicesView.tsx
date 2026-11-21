@@ -102,6 +102,92 @@ export function AdminInvoicesView({
   }, [previewInvoice]);
 
   const handlePrintInvoice = () => {
+    if (!previewInvoice) return;
+
+    // Isolate printing directly to an invisible dedicated A4 document frame
+    const sheetElement = document.getElementById("printable-invoice-sheet");
+    if (sheetElement) {
+      const printFrame = document.createElement("iframe");
+      printFrame.setAttribute(
+        "style",
+        "position:fixed;top:0;left:0;width:0;height:0;border:none;opacity:0;pointer-events:none;z-index:-999;"
+      );
+      document.body.appendChild(printFrame);
+
+      const frameDoc = printFrame.contentWindow?.document;
+      if (frameDoc) {
+        frameDoc.open();
+        frameDoc.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>${previewInvoice.type} - ${previewInvoice.invoiceNumber}</title>
+              <link rel="preconnect" href="https://fonts.googleapis.com">
+              <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+              <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+              <style>
+                @page {
+                  size: A4 portrait;
+                  margin: 10mm 12mm;
+                }
+                * {
+                  box-sizing: border-box;
+                  margin: 0;
+                  padding: 0;
+                  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                html, body {
+                  background: #ffffff !important;
+                  color: #09090b !important;
+                  width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+                #printable-invoice-sheet {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 auto !important;
+                  padding: 0 !important;
+                  page-break-after: avoid !important;
+                  break-after: avoid !important;
+                }
+                .avoid-break-inside {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+              </style>
+            </head>
+            <body>
+              ${sheetElement.outerHTML}
+            </body>
+          </html>
+        `);
+        frameDoc.close();
+
+        setTimeout(() => {
+          try {
+            printFrame.contentWindow?.focus();
+            printFrame.contentWindow?.print();
+          } catch (e) {
+            console.warn("Iframe print fallback:", e);
+            document.body.classList.add("printing-invoice");
+            window.print();
+          } finally {
+            setTimeout(() => {
+              if (document.body.contains(printFrame)) {
+                document.body.removeChild(printFrame);
+              }
+            }, 3000);
+          }
+        }, 500);
+        return;
+      }
+    }
+
+    // Direct fallback
     document.body.classList.add("printing-invoice");
     window.print();
     setTimeout(() => {
@@ -640,11 +726,12 @@ export function AdminInvoicesView({
             </div>
 
             {/* Scrollable Preview Wrapper (Natural flow during print) */}
-            <div className="overflow-y-auto flex-1 p-4 sm:p-7">
+            <div id="printable-invoice-sheet-container" className="overflow-y-auto flex-1 p-4 sm:p-7">
               {/* Printable Invoice Sheet - Ultra-Luxury, Minimalist Studio Design (Strictly Fits 1 Page) */}
               <div
                 id="printable-invoice-sheet"
-                className="w-full max-w-[720px] mx-auto bg-white text-neutral-900 font-sans space-y-3.5"
+                style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
+                className="w-full max-w-[720px] mx-auto bg-white text-neutral-900 space-y-3.5"
               >
                 {/* Header: Brand Mark & Studio Details + Invoice Reference */}
                 <div className="flex justify-between items-start border-b border-neutral-900/15 pb-3.5">

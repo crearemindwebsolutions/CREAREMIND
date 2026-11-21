@@ -407,9 +407,13 @@ body,
     print-color-adjust: exact !important;
   }
 
-  /* When printing an invoice, hide the root app tree and UI overlays */
-  body.printing-invoice #root,
-  body:has(#printable-invoice-portal) > #root,
+  /* When printing an invoice, strictly hide ALL direct children of body EXCEPT the invoice portal */
+  body > *:not(#printable-invoice-portal) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Hide any potential header, nav, footer, toasters or controls */
   .no-print,
   [data-sonner-toaster],
   header,
@@ -417,6 +421,7 @@ body,
   nav,
   footer {
     display: none !important;
+    visibility: hidden !important;
   }
 
   /* Portal container reset for pure paper document flow */
@@ -424,7 +429,7 @@ body,
     position: static !important;
     inset: auto !important;
     display: block !important;
-    background: #ffffff !important;
+    background: transparent !important;
     backdrop-filter: none !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -446,24 +451,39 @@ body,
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: #ffffff !important;
+    background: transparent !important;
     overflow: visible !important;
     max-height: none !important;
+  }
+
+  #printable-invoice-sheet-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    width: 100% !important;
+    background: transparent !important;
   }
 
   #printable-invoice-sheet {
     position: static !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     background: #ffffff !important;
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     page-break-after: avoid !important;
+    break-after: avoid !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  #printable-invoice-sheet * {
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   }
 
   /* Prevent awkward page breaks in tables and key sections */
@@ -472,4 +492,5 @@ body,
     break-inside: avoid !important;
   }
 }
+
 
