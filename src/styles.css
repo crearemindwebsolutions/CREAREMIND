@@ -389,7 +389,14 @@ body,
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm 8mm 10mm;
+    margin: 10mm 12mm 10mm 12mm;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   html,
@@ -444,6 +451,7 @@ body,
 
   #printable-invoice-portal > div {
     position: static !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -457,16 +465,19 @@ body,
   }
 
   #printable-invoice-sheet-container {
+    display: block !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
     max-height: none !important;
+    height: auto !important;
     width: 100% !important;
     background: transparent !important;
   }
 
   #printable-invoice-sheet {
     position: static !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 auto !important;
