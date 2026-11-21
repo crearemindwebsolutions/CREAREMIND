@@ -31,9 +31,13 @@ import {
   getInvoiceCompanyShare,
   getInvoiceTeamShare,
   getInvoiceProjectName,
+  getInvoicePaidAmount,
+  getInvoiceRealizedCompanyShare,
+  getInvoicePendingCompanyShare,
   fetchInvoicesFromCloud,
 } from "@/lib/admin-invoices";
 import { InvoiceSplitModal } from "./InvoiceSplitModal";
+import { InvoicePhasesModal } from "./InvoicePhasesModal";
 
 interface AdminWalletViewProps {
   invoices: AdminInvoice[];
@@ -53,6 +57,7 @@ export function AdminWalletView({
   const [activeSubTab, setActiveSubTab] = useState<"projects" | "partners">("projects");
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [selectedInvoiceForSplit, setSelectedInvoiceForSplit] = useState<AdminInvoice | null>(null);
+  const [phasesModalInvoice, setPhasesModalInvoice] = useState<AdminInvoice | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Calculations
@@ -60,11 +65,16 @@ export function AdminWalletView({
   const totalCompanyShareGross = invoices.reduce((acc, inv) => acc + getInvoiceCompanyShare(inv), 0);
   const totalTeamShareGross = invoices.reduce((acc, inv) => acc + getInvoiceTeamShare(inv), 0);
 
-  // Realized vs Pending
+  // Realized vs Pending (supports phase-wise milestones dynamically!)
+  const realizedCompanyShare = invoices.reduce((acc, inv) => acc + getInvoiceRealizedCompanyShare(inv), 0);
+  const pendingCompanyShare = Math.max(0, totalCompanyShareGross - realizedCompanyShare);
   const paidInvoices = invoices.filter((i) => i.status === "Paid");
-  const realizedCompanyShare = paidInvoices.reduce((acc, inv) => acc + getInvoiceCompanyShare(inv), 0);
-  const realizedTeamShare = paidInvoices.reduce((acc, inv) => acc + getInvoiceTeamShare(inv), 0);
-  const pendingCompanyShare = totalCompanyShareGross - realizedCompanyShare;
+  const realizedTeamShare = invoices.reduce((acc, inv) => {
+    const paidAmt = getInvoicePaidAmount(inv);
+    if (paidAmt <= 0) return acc;
+    if (paidAmt >= (inv.total || 0)) return acc + getInvoiceTeamShare(inv);
+    return acc + Math.round(paidAmt * 0.70);
+  }, 0);
 
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
@@ -479,6 +489,23 @@ export function AdminWalletView({
                             <PieChart className="h-3.5 w-3.5 text-emerald-600" />
                             <span>{hasCustomSplit ? "Edit Split" : "Split Revenue"}</span>
                           </button>
+
+                          <button
+                            onClick={() => setPhasesModalInvoice(inv)}
+                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-all shadow-2xs cursor-pointer ${
+                              inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                                ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-900 hover:text-white"
+                            }`}
+                            title="Manage Phase-Wise / Milestone Payments"
+                          >
+                            <Layers className="h-3.5 w-3.5 text-blue-600" />
+                            <span>
+                              {inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                                ? `${inv.phases.filter((p) => p.status === "Paid").length}/${inv.phases.length} Phases`
+                                : "Phases"}
+                            </span>
+                          </button>
                         </div>
                       </div>
 
@@ -504,14 +531,18 @@ export function AdminWalletView({
                               🏢 Company Wallet (30%)
                             </span>
                             <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold">
-                              Auto-Credit
+                              {inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                                ? `₹${getInvoiceRealizedCompanyShare(inv).toLocaleString("en-IN")} Realized`
+                                : "30% Reserve"}
                             </span>
                           </div>
                           <p className="text-2xl font-bold text-emerald-950 font-sans tracking-tight tabular-nums">
                             +₹{compShare.toLocaleString("en-IN")}
                           </p>
                           <p className="text-xs text-emerald-700 font-medium">
-                            Credited directly to company treasury
+                            {inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                              ? `₹${getInvoiceRealizedCompanyShare(inv).toLocaleString("en-IN")} realized from settled phases`
+                              : "Credited directly to company treasury"}
                           </p>
                         </div>
 
@@ -653,13 +684,27 @@ export function AdminWalletView({
                           </td>
 
                           <td className="px-6 py-4.5 text-right">
-                            <button
-                              onClick={() => setSelectedInvoiceForSplit(inv)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-900 hover:text-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors shadow-2xs cursor-pointer"
-                            >
-                              <PieChart className="h-3 w-3 text-emerald-600" />
-                              <span>{hasCustomSplit ? "Edit Split" : "Split"}</span>
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setSelectedInvoiceForSplit(inv)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-900 hover:text-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors shadow-2xs cursor-pointer"
+                              >
+                                <PieChart className="h-3 w-3 text-emerald-600" />
+                                <span>{hasCustomSplit ? "Edit Split" : "Split"}</span>
+                              </button>
+                              <button
+                                onClick={() => setPhasesModalInvoice(inv)}
+                                className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors shadow-2xs cursor-pointer ${
+                                  inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                                    ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                    : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100"
+                                }`}
+                                title="Manage Milestone Payment Phases"
+                              >
+                                <Layers className="h-3 w-3 text-blue-600" />
+                                <span>Phases</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -747,6 +792,17 @@ export function AdminWalletView({
           isOpen={true}
           onClose={() => setSelectedInvoiceForSplit(null)}
           onSaveSplit={handleSaveSplit}
+          adminEmail={adminEmail}
+        />
+      )}
+
+      {/* Invoice Payment Phases Modal */}
+      {phasesModalInvoice && (
+        <InvoicePhasesModal
+          invoice={phasesModalInvoice}
+          isOpen={true}
+          onClose={() => setPhasesModalInvoice(null)}
+          onSavePhases={handleSaveSplit}
           adminEmail={adminEmail}
         />
       )}

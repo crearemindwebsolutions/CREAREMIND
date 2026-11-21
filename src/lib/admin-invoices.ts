@@ -11,6 +11,19 @@ export interface InvoiceItem {
 export type InvoiceStatus = "Paid" | "Pending" | "Partial" | "Overdue" | "Draft";
 export type InvoiceType = "Tax Invoice" | "Formal Quotation" | "Proforma Invoice";
 
+export type PaymentPhaseStatus = "Paid" | "Pending" | "Overdue";
+
+export interface InvoicePaymentPhase {
+  id: string; // e.g. "phase-1"
+  name: string; // e.g. "Phase 1: Advance & Prototype"
+  percentage: number; // e.g. 40
+  amount: number; // calculated in INR
+  dueDate?: string; // YYYY-MM-DD
+  status: PaymentPhaseStatus;
+  paidAt?: string;
+  notes?: string;
+}
+
 export interface InvoiceMemberSplit {
   id: string;
   name: string;
@@ -54,6 +67,74 @@ export interface AdminInvoice {
   upiId?: string;
   createdAt: number;
   split?: InvoiceSplitData;
+  isPhaseWise?: boolean;
+  phases?: InvoicePaymentPhase[];
+}
+
+export function getInvoicePaidAmount(invoice: AdminInvoice): number {
+  if (invoice.isPhaseWise && Array.isArray(invoice.phases) && invoice.phases.length > 0) {
+    return invoice.phases
+      .filter((p) => p.status === "Paid")
+      .reduce((acc, p) => acc + (p.amount || 0), 0);
+  }
+  if (invoice.status === "Paid") {
+    return invoice.total || 0;
+  }
+  return invoice.amountPaid || 0;
+}
+
+export function getInvoiceRealizedCompanyShare(invoice: AdminInvoice): number {
+  const paid = getInvoicePaidAmount(invoice);
+  if (paid <= 0) return 0;
+  if (!invoice.total || invoice.total <= 0) return 0;
+  if (paid >= invoice.total) {
+    return getInvoiceCompanyShare(invoice);
+  }
+  return Math.round(paid * 0.30);
+}
+
+export function getInvoicePendingCompanyShare(invoice: AdminInvoice): number {
+  const totalCo = getInvoiceCompanyShare(invoice);
+  const realizedCo = getInvoiceRealizedCompanyShare(invoice);
+  return Math.max(0, totalCo - realizedCo);
+}
+
+export function buildDefaultPhases(total: number): InvoicePaymentPhase[] {
+  const p1 = Math.round(total * 0.40);
+  const p2 = Math.round(total * 0.40);
+  const p3 = Math.max(0, total - p1 - p2);
+
+  const today = new Date();
+  const d1 = new Date(today);
+  const d2 = new Date(today.getTime() + 14 * 86400000);
+  const d3 = new Date(today.getTime() + 30 * 86400000);
+
+  return [
+    {
+      id: `phase-1-${Date.now()}`,
+      name: "Phase 1: Project Kickoff & UI Prototype (40%)",
+      percentage: 40,
+      amount: p1,
+      dueDate: d1.toISOString().split("T")[0],
+      status: "Paid",
+    },
+    {
+      id: `phase-2-${Date.now() + 1}`,
+      name: "Phase 2: Core Development & Client Review (40%)",
+      percentage: 40,
+      amount: p2,
+      dueDate: d2.toISOString().split("T")[0],
+      status: "Pending",
+    },
+    {
+      id: `phase-3-${Date.now() + 2}`,
+      name: "Phase 3: Final QA, Deployment & Handover (20%)",
+      percentage: 20,
+      amount: p3,
+      dueDate: d3.toISOString().split("T")[0],
+      status: "Pending",
+    },
+  ];
 }
 
 export function getInvoiceCompanyShare(invoice: AdminInvoice): number {

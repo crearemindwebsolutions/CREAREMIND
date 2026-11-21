@@ -19,6 +19,9 @@ import {
   Receipt,
   RefreshCw,
   PieChart,
+  Layers,
+  Sparkles,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,13 +29,17 @@ import {
   type InvoiceItem,
   type InvoiceStatus,
   type InvoiceType,
+  type InvoicePaymentPhase,
   saveInvoicesList,
   fetchInvoicesFromCloud,
   buildDefaultInvoiceSplit,
+  buildDefaultPhases,
+  getInvoicePaidAmount,
 } from "@/lib/admin-invoices";
 import { recordAdminLog } from "@/lib/admin-logs";
 import { buildWhatsAppLink } from "@/lib/admin-comms";
 import { InvoiceSplitModal } from "./InvoiceSplitModal";
+import { InvoicePhasesModal } from "./InvoicePhasesModal";
 
 interface AdminInvoicesViewProps {
   invoices: AdminInvoice[];
@@ -51,6 +58,7 @@ export function AdminInvoicesView({
   const [previewInvoice, setPreviewInvoice] = useState<AdminInvoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<AdminInvoice | null>(null);
   const [splitInvoice, setSplitInvoice] = useState<AdminInvoice | null>(null);
+  const [phasesModalInvoice, setPhasesModalInvoice] = useState<AdminInvoice | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Form states
@@ -69,6 +77,8 @@ export function AdminInvoicesView({
   const [formItems, setFormItems] = useState<InvoiceItem[]>([
     { id: "1", description: "Custom Software Engineering / Web Platform", quantity: 1, rate: 45000, amount: 45000 },
   ]);
+  const [formIsPhaseWise, setFormIsPhaseWise] = useState(false);
+  const [formPhases, setFormPhases] = useState<InvoicePaymentPhase[]>([]);
 
   // Aggregate metrics
   const totalBilled = invoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
@@ -105,6 +115,8 @@ export function AdminInvoicesView({
     setFormItems([
       { id: "1", description: "Web Platform Development & API Setup", quantity: 1, rate: 50000, amount: 50000 },
     ]);
+    setFormIsPhaseWise(true);
+    setFormPhases(buildDefaultPhases(59000));
     setIsModalOpen(true);
   };
 
@@ -123,6 +135,10 @@ export function AdminInvoicesView({
     setFormGstPercent(inv.gstPercent);
     setFormNotes(inv.notes || "");
     setFormItems(inv.items);
+    setFormIsPhaseWise(!!inv.isPhaseWise);
+    setFormPhases(
+      inv.phases && inv.phases.length > 0 ? inv.phases : buildDefaultPhases(inv.total || 50000)
+    );
     setIsModalOpen(true);
   };
 
@@ -167,7 +183,15 @@ export function AdminInvoicesView({
     const subtotal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
     const gstAmount = Math.round((subtotal * formGstPercent) / 100);
     const total = subtotal + gstAmount;
-    const amountPaid = formStatus === "Paid" ? total : 0;
+
+    // Phase-wise calculations
+    const phasePaidSum = formIsPhaseWise && formPhases.length > 0
+      ? formPhases.filter((p) => p.status === "Paid").reduce((acc, p) => acc + (p.amount || 0), 0)
+      : (formStatus === "Paid" ? total : 0);
+    const effectiveAmountPaid = formIsPhaseWise ? phasePaidSum : (formStatus === "Paid" ? total : 0);
+    const effectiveStatus: InvoiceStatus = formIsPhaseWise
+      ? (phasePaidSum >= total && formPhases.length > 0 ? "Paid" : phasePaidSum > 0 ? "Partial" : "Pending")
+      : formStatus;
 
     if (editingInvoice) {
       const updated = invoices.map((inv) => {
@@ -201,15 +225,17 @@ export function AdminInvoicesView({
           clientGst: formClientGst,
           issueDate: formIssueDate || inv.issueDate,
           dueDate: formDueDate || inv.dueDate,
-          status: formStatus,
+          status: effectiveStatus,
           items: formItems,
           subtotal,
           gstPercent: formGstPercent,
           gstAmount,
           total,
-          amountPaid: formStatus === "Paid" ? total : inv.amountPaid,
+          amountPaid: effectiveAmountPaid,
           notes: formNotes,
           split: updatedSplit,
+          isPhaseWise: formIsPhaseWise,
+          phases: formIsPhaseWise ? formPhases : inv.phases,
         };
       });
       onInvoicesChange(updated);
@@ -229,18 +255,20 @@ export function AdminInvoicesView({
         clientGst: formClientGst,
         issueDate: formIssueDate || new Date().toISOString().split("T")[0]!,
         dueDate: formDueDate || new Date().toISOString().split("T")[0]!,
-        status: formStatus,
+        status: effectiveStatus,
         items: formItems,
         subtotal,
         gstPercent: formGstPercent,
         gstAmount,
         total,
-        amountPaid,
+        amountPaid: effectiveAmountPaid,
         currency: "INR",
         notes: formNotes,
         upiId: "8072719603@upi",
         createdAt: Date.now(),
         split: initialSplit,
+        isPhaseWise: formIsPhaseWise,
+        phases: formIsPhaseWise ? formPhases : undefined,
       };
       const updated = [newInv, ...invoices];
       onInvoicesChange(updated);
@@ -439,18 +467,26 @@ export function AdminInvoicesView({
                       ₹{inv.total.toLocaleString("en-IN")}
                     </td>
                     <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          inv.status === "Paid"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : inv.status === "Pending"
-                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                            : "bg-blue-50 text-blue-700 border border-blue-200"
-                        }`}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        {inv.status}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            inv.status === "Paid"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : inv.status === "Pending"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                          }`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          {inv.status}
+                        </span>
+                        {inv.isPhaseWise && inv.phases && inv.phases.length > 0 && (
+                          <span className="text-[10px] text-blue-700 font-sans font-medium flex items-center gap-1">
+                            <Layers className="h-2.5 w-2.5 text-blue-500" />
+                            {inv.phases.filter((p) => p.status === "Paid").length}/{inv.phases.length} Phases Paid
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -473,8 +509,25 @@ export function AdminInvoicesView({
                           <PieChart className="h-3 w-3 text-emerald-600" />
                           <span>Split</span>
                           {inv.split?.members && inv.split.members.length > 0 ? (
-                            <span className="rounded-full bg-emerald-200/80 px-1 text-[9px] font-mono text-emerald-900">
+                            <span className="rounded-full bg-emerald-200/80 px-1 text-[9px] font-sans font-bold text-emerald-900">
                               {inv.split.members.length}
+                            </span>
+                          ) : null}
+                        </button>
+                        <button
+                          onClick={() => setPhasesModalInvoice(inv)}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                            inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                              ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                              : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-300/80"
+                          }`}
+                          title="Manage Phase-Wise / Milestone Payments"
+                        >
+                          <Layers className="h-3 w-3 text-blue-600" />
+                          <span>Phases</span>
+                          {inv.isPhaseWise && inv.phases && inv.phases.length > 0 ? (
+                            <span className="rounded-full bg-blue-200/80 px-1 text-[9px] font-sans font-bold text-blue-900">
+                              {inv.phases.filter((p) => p.status === "Paid").length}/{inv.phases.length}
                             </span>
                           ) : null}
                         </button>
@@ -594,9 +647,9 @@ export function AdminInvoicesView({
                     {previewInvoice.items.map((item, idx) => (
                       <tr key={idx}>
                         <td className="py-3 px-3 font-semibold text-neutral-900">{item.description}</td>
-                        <td className="py-3 px-3 text-center font-mono">{item.quantity}</td>
-                        <td className="py-3 px-3 text-right font-mono">₹{item.rate.toLocaleString("en-IN")}</td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-neutral-900">
+                        <td className="py-3 px-3 text-center font-sans tabular-nums">{item.quantity}</td>
+                        <td className="py-3 px-3 text-right font-sans tabular-nums">₹{item.rate.toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-3 text-right font-sans font-bold text-neutral-900 tabular-nums">
                           ₹{item.amount.toLocaleString("en-IN")}
                         </td>
                       </tr>
@@ -606,24 +659,81 @@ export function AdminInvoicesView({
               </div>
 
               {/* Totals Summary */}
-              <div className="flex justify-end pt-4">
-                <div className="w-64 space-y-2 text-xs">
+              <div className="flex justify-end pt-2">
+                <div className="w-72 space-y-2 text-xs">
                   <div className="flex justify-between text-neutral-600">
                     <span>Subtotal:</span>
-                    <span className="font-mono font-semibold">₹{previewInvoice.subtotal.toLocaleString("en-IN")}</span>
+                    <span className="font-sans font-semibold tabular-nums">₹{previewInvoice.subtotal.toLocaleString("en-IN")}</span>
                   </div>
                   {previewInvoice.gstPercent > 0 && (
                     <div className="flex justify-between text-neutral-600">
                       <span>GST ({previewInvoice.gstPercent}%):</span>
-                      <span className="font-mono font-semibold">₹{previewInvoice.gstAmount.toLocaleString("en-IN")}</span>
+                      <span className="font-sans font-semibold tabular-nums">₹{previewInvoice.gstAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-base font-black text-neutral-950 border-t border-neutral-200 pt-2">
-                    <span>Total Amount:</span>
-                    <span className="font-mono">₹{previewInvoice.total.toLocaleString("en-IN")}</span>
+                    <span>Total Project Value:</span>
+                    <span className="font-sans tabular-nums">₹{previewInvoice.total.toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               </div>
+
+              {/* Milestone / Phase-Wise Payment Schedule */}
+              {previewInvoice.isPhaseWise && previewInvoice.phases && previewInvoice.phases.length > 0 && (
+                <div className="rounded-xl border border-neutral-200 overflow-hidden space-y-0">
+                  <div className="bg-neutral-50 px-3.5 py-2.5 border-b border-neutral-200 flex justify-between items-center">
+                    <span className="font-bold text-neutral-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-blue-600" />
+                      Milestone / Phase-Wise Payment Schedule
+                    </span>
+                    <span className="text-[11px] text-neutral-600 font-semibold font-sans">
+                      {previewInvoice.phases.filter(p => p.status === "Paid").length} of {previewInvoice.phases.length} Phases Paid
+                    </span>
+                  </div>
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-neutral-100/60 border-b border-neutral-200 text-[10px] uppercase text-neutral-500 font-bold">
+                      <tr>
+                        <th className="py-2 px-3">#</th>
+                        <th className="py-2 px-3">Milestone Deliverable / Phase</th>
+                        <th className="py-2 px-3">Target Date</th>
+                        <th className="py-2 px-3 text-right">Share (%)</th>
+                        <th className="py-2 px-3 text-right">Phase Amount</th>
+                        <th className="py-2 px-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {previewInvoice.phases.map((phase, idx) => (
+                        <tr key={phase.id} className={phase.status === "Paid" ? "bg-emerald-50/30" : ""}>
+                          <td className="py-2 px-3 font-bold text-neutral-400 font-sans">{idx + 1}</td>
+                          <td className="py-2 px-3 font-semibold text-neutral-900">{phase.name}</td>
+                          <td className="py-2 px-3 text-neutral-500 text-[11px] font-sans">{phase.dueDate || "On Milestone"}</td>
+                          <td className="py-2 px-3 text-right text-neutral-600 font-sans tabular-nums">{phase.percentage}%</td>
+                          <td className="py-2 px-3 text-right font-bold text-neutral-950 font-sans tabular-nums">
+                            ₹{phase.amount.toLocaleString("en-IN")}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              phase.status === "Paid"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}>
+                              {phase.status === "Paid" ? "✓ PAID" : "PENDING"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="bg-neutral-50 px-3.5 py-2.5 border-t border-neutral-200 flex justify-between items-center text-xs">
+                    <span className="text-neutral-600">
+                      Amount Paid to Date: <strong className="text-emerald-700 font-sans font-bold tabular-nums">₹{getInvoicePaidAmount(previewInvoice).toLocaleString("en-IN")}</strong>
+                    </span>
+                    <span className="text-neutral-600">
+                      Outstanding Balance: <strong className="text-amber-700 font-sans font-bold tabular-nums">₹{Math.max(0, previewInvoice.total - getInvoicePaidAmount(previewInvoice)).toLocaleString("en-IN")}</strong>
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Settlement Instructions */}
               <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-1 text-[11px] text-neutral-600">
@@ -831,6 +941,208 @@ export function AdminInvoicesView({
                 </div>
               </div>
 
+              {/* Milestone & Phase-Wise Payments Toggle & Builder */}
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="phase-wise-toggle"
+                      checked={formIsPhaseWise}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormIsPhaseWise(checked);
+                        if (checked && formPhases.length === 0) {
+                          const currentSubtotal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                          const currentTotal = currentSubtotal + Math.round((currentSubtotal * formGstPercent) / 100);
+                          setFormPhases(buildDefaultPhases(currentTotal || 50000));
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label htmlFor="phase-wise-toggle" className="font-bold text-neutral-900 cursor-pointer flex items-center gap-1.5">
+                      <Layers className="h-4 w-4 text-blue-600" />
+                      <span>Phase-Wise / Milestone Payment Schedule</span>
+                    </label>
+                  </div>
+                  {formIsPhaseWise && (
+                    <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full font-sans">
+                      {formPhases.filter(p => p.status === "Paid").length} of {formPhases.length} Phases Paid
+                    </span>
+                  )}
+                </div>
+
+                {formIsPhaseWise && (
+                  <div className="space-y-3 pt-1">
+                    <p className="text-[11px] text-neutral-500">
+                      Split this project invoice into milestone payments (e.g. 40% Advance, 40% Beta Demo, 20% Final Launch).
+                    </p>
+
+                    {/* Quick Presets */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="text-[10px] font-semibold text-neutral-400 uppercase">Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const subtotalVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                          const totalVal = subtotalVal + Math.round((subtotalVal * formGstPercent) / 100);
+                          const p1 = Math.round(totalVal * 0.5);
+                          const p2 = totalVal - p1;
+                          setFormPhases([
+                            { id: `phase-1-${Date.now()}`, name: "Phase 1: 50% Advance & Kickoff", percentage: 50, amount: p1, dueDate: formIssueDate, status: "Paid" },
+                            { id: `phase-2-${Date.now() + 1}`, name: "Phase 2: 50% Final Delivery & Handover", percentage: 50, amount: p2, dueDate: formDueDate, status: "Pending" },
+                          ]);
+                        }}
+                        className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 cursor-pointer shadow-2xs"
+                      >
+                        50% / 50% Split
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const subtotalVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                          const totalVal = subtotalVal + Math.round((subtotalVal * formGstPercent) / 100);
+                          const p1 = Math.round(totalVal * 0.4);
+                          const p2 = Math.round(totalVal * 0.4);
+                          const p3 = Math.max(0, totalVal - p1 - p2);
+                          setFormPhases([
+                            { id: `phase-1-${Date.now()}`, name: "Phase 1: Project Kickoff & UI (40%)", percentage: 40, amount: p1, dueDate: formIssueDate, status: "Paid" },
+                            { id: `phase-2-${Date.now() + 1}`, name: "Phase 2: Beta Demo & Testing (40%)", percentage: 40, amount: p2, dueDate: formDueDate, status: "Pending" },
+                            { id: `phase-3-${Date.now() + 2}`, name: "Phase 3: Final Launch & Handover (20%)", percentage: 20, amount: p3, dueDate: formDueDate, status: "Pending" },
+                          ]);
+                        }}
+                        className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 cursor-pointer shadow-2xs"
+                      >
+                        40% / 40% / 20% Standard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const subtotalVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                          const totalVal = subtotalVal + Math.round((subtotalVal * formGstPercent) / 100);
+                          const p1 = Math.round(totalVal * 0.3);
+                          const p2 = Math.round(totalVal * 0.4);
+                          const p3 = Math.max(0, totalVal - p1 - p2);
+                          setFormPhases([
+                            { id: `phase-1-${Date.now()}`, name: "Phase 1: Advance Booking (30%)", percentage: 30, amount: p1, dueDate: formIssueDate, status: "Paid" },
+                            { id: `phase-2-${Date.now() + 1}`, name: "Phase 2: Core Milestone (40%)", percentage: 40, amount: p2, dueDate: formDueDate, status: "Pending" },
+                            { id: `phase-3-${Date.now() + 2}`, name: "Phase 3: Handover & Deployment (30%)", percentage: 30, amount: p3, dueDate: formDueDate, status: "Pending" },
+                          ]);
+                        }}
+                        className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-700 cursor-pointer shadow-2xs"
+                      >
+                        30% / 40% / 30% Milestone
+                      </button>
+                    </div>
+
+                    {/* Phase Items List */}
+                    <div className="space-y-2">
+                      {formPhases.map((phase, pIdx) => {
+                        const subtotalVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                        const totalVal = subtotalVal + Math.round((subtotalVal * formGstPercent) / 100);
+
+                        return (
+                          <div key={phase.id} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-neutral-900 text-white font-bold text-[10px] font-sans">
+                              {pIdx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={phase.name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setFormPhases(prev => prev.map(p => p.id === phase.id ? { ...p, name: val } : p));
+                              }}
+                              placeholder="Milestone title"
+                              className="flex-1 rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-900 font-medium"
+                            />
+                            <div className="w-20">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={phase.percentage}
+                                onChange={(e) => {
+                                  const pct = Number(e.target.value) || 0;
+                                  const amt = Math.round((pct / 100) * totalVal);
+                                  setFormPhases(prev => prev.map(p => p.id === phase.id ? { ...p, percentage: pct, amount: amt } : p));
+                                }}
+                                className="w-full rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs text-right font-sans tabular-nums"
+                                placeholder="%"
+                              />
+                            </div>
+                            <div className="w-28">
+                              <input
+                                type="number"
+                                value={phase.amount}
+                                onChange={(e) => {
+                                  const amt = Number(e.target.value) || 0;
+                                  const pct = totalVal > 0 ? parseFloat(((amt / totalVal) * 100).toFixed(1)) : 0;
+                                  setFormPhases(prev => prev.map(p => p.id === phase.id ? { ...p, amount: amt, percentage: pct } : p));
+                                }}
+                                className="w-full rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs text-right font-sans font-bold tabular-nums"
+                                placeholder="₹"
+                              />
+                            </div>
+                            <div className="w-24">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nextStatus = phase.status === "Paid" ? "Pending" : "Paid";
+                                  setFormPhases(prev => prev.map(p => p.id === phase.id ? { ...p, status: nextStatus } : p));
+                                }}
+                                className={`w-full py-1 text-[10px] font-bold rounded-md transition-colors cursor-pointer ${
+                                  phase.status === "Paid"
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                }`}
+                              >
+                                {phase.status === "Paid" ? "✓ Paid" : "Pending"}
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (formPhases.length <= 1) return;
+                                setFormPhases(prev => prev.filter(p => p.id !== phase.id));
+                              }}
+                              className="p-1 text-neutral-400 hover:text-red-600 rounded-md"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const subtotalVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                        const totalVal = subtotalVal + Math.round((subtotalVal * formGstPercent) / 100);
+                        const sumPct = formPhases.reduce((acc, p) => acc + (Number(p.percentage) || 0), 0);
+                        const remPct = Math.max(0, 100 - sumPct);
+                        const remAmt = Math.max(0, totalVal - formPhases.reduce((acc, p) => acc + (Number(p.amount) || 0), 0));
+                        setFormPhases([
+                          ...formPhases,
+                          {
+                            id: `phase-${Date.now()}`,
+                            name: `Phase ${formPhases.length + 1}: Final Deliverable`,
+                            percentage: remPct,
+                            amount: remAmt,
+                            dueDate: formDueDate,
+                            status: "Pending",
+                          },
+                        ]);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-50 cursor-pointer shadow-2xs"
+                    >
+                      <Plus className="h-3 w-3" /> Add Phase
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-100">
                 <button
                   type="button"
@@ -850,6 +1162,7 @@ export function AdminInvoicesView({
           </div>
         </div>
       )}
+
       {/* INVOICE SPLIT MODAL (30% COMPANY / 70% PARTNERS) */}
       {splitInvoice && (
         <InvoiceSplitModal
@@ -860,6 +1173,21 @@ export function AdminInvoicesView({
             const next = invoices.map((i) => (i.id === updated.id ? updated : i));
             onInvoicesChange(next);
             setSplitInvoice(null);
+          }}
+          adminEmail={adminEmail}
+        />
+      )}
+
+      {/* INVOICE PAYMENT PHASES MODAL */}
+      {phasesModalInvoice && (
+        <InvoicePhasesModal
+          invoice={phasesModalInvoice}
+          isOpen={true}
+          onClose={() => setPhasesModalInvoice(null)}
+          onSavePhases={(updated) => {
+            const next = invoices.map((i) => (i.id === updated.id ? updated : i));
+            onInvoicesChange(next);
+            setPhasesModalInvoice(null);
           }}
           adminEmail={adminEmail}
         />
