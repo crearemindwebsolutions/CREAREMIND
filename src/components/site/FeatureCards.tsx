@@ -5,11 +5,11 @@ import { useSiteContent } from "@/lib/site-content";
 import { AdaptiveMedia } from "@/components/ui/adaptive-media";
 
 // Matching premium showcase photos for each core service
-import tplAgency from "@/assets/templates/tpl-agency.jpg"; // Modern Website & Web Applications
+import tplWebDesign from "@/assets/templates/tpl-web-design.jpg"; // Modern Website & Web Applications
 import tplMobile from "@/assets/templates/tpl-mobile.jpg"; // Native iOS & Android Mobile Apps
 import tplPos from "@/assets/templates/tpl-pos.jpg"; // Retail boutique POS terminal & thermal receipt billing
-import tplFashion from "@/assets/templates/tpl-fashion.jpg"; // Social media creator branding & performance analytics
-import tplCreativeDev from "@/assets/templates/tpl-creative-dev.jpg"; // Cinematic video editing & production
+import tplSaas from "@/assets/templates/tpl-saas.jpg"; // Cloud SaaS & Database Engineering
+import tplUiSystem from "@/assets/templates/tpl-ui-system.jpg"; // Modern UI/UX & Design Systems
 
 interface FeatureCardItem {
   id?: string;
@@ -36,7 +36,7 @@ const CARDS: FeatureCardItem[] = [
     id: "fc-1",
     t: "Website Development",
     d: "Mobile-friendly websites with WhatsApp chat, online payments & Google search setup.",
-    img: tplAgency,
+    img: tplWebDesign,
     link: "/services#web-dev",
   },
   {
@@ -55,17 +55,17 @@ const CARDS: FeatureCardItem[] = [
   },
   {
     id: "fc-4",
-    t: "Social Media Team",
-    d: "Daily branded graphics, viral reels, engaging captions & organic follower growth.",
-    img: tplFashion,
-    link: "/services#social-media",
+    t: "Cloud SaaS Platforms",
+    d: "Full-stack cloud applications, automated billing ledgers, and secure database architecture.",
+    img: tplSaas,
+    link: "/services#web-dev",
   },
   {
     id: "fc-5",
-    t: "Video Production",
-    d: "High-retention Instagram Reels & promo video ads with animated captions & sound effects.",
-    img: tplCreativeDev,
-    link: "/services#video-editing",
+    t: "UI/UX Design Systems",
+    d: "High-conversion digital interfaces, interactive prototypes, and production-ready component libraries.",
+    img: tplUiSystem,
+    link: "/services#ui-ux",
   },
 ];
 

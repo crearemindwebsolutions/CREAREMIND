@@ -654,9 +654,9 @@ export function AdminInvoicesView({
       {previewInvoice && typeof document !== "undefined" && createPortal(
         <div
           id="printable-invoice-portal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto print:fixed-none print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:overflow-visible print:backdrop-blur-none"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto print:!static print:!inset-auto print:!bg-white print:!p-0 print:!m-0 print:!overflow-visible print:!backdrop-blur-none"
         >
-          <div className="relative w-full max-w-3xl rounded-2xl border border-neutral-200/90 bg-white text-neutral-900 shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col print:border-none print:shadow-none print:rounded-none print:max-h-none print:m-0 print:p-0 print:w-full print:max-w-full print:bg-white print:overflow-visible">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-neutral-200/90 bg-white text-neutral-900 shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col print:!border-none print:!shadow-none print:!rounded-none print:!max-h-none print:!m-0 print:!p-0 print:!w-full print:!max-w-full print:!bg-white print:!overflow-visible">
             {/* Modal Controls Bar (Hidden on Print) */}
             <div className="no-print shrink-0 flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-neutral-200 bg-neutral-50/90">
               <div className="flex items-center gap-2">

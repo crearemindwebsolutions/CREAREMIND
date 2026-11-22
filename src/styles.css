@@ -400,16 +400,20 @@ body,
   }
 
   html,
-  body {
+  html.dark,
+  body,
+  body.dark,
+  #root,
+  #__next,
+  #printable-invoice-portal,
+  #printable-invoice-sheet-container,
+  #printable-invoice-sheet {
     background: #ffffff !important;
     background-color: #ffffff !important;
-    color: #000000 !important;
+    color: #111111 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    overflow: visible !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -418,6 +422,8 @@ body,
   body > *:not(#printable-invoice-portal) {
     display: none !important;
     visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
 
   /* Hide any potential header, nav, footer, toasters or controls */
@@ -429,6 +435,7 @@ body,
   footer {
     display: none !important;
     visibility: hidden !important;
+    height: 0 !important;
   }
 
   /* Portal container reset for pure paper document flow */
@@ -483,6 +490,7 @@ body,
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: 270mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     border: none !important;

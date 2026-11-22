@@ -3,67 +3,57 @@ import { ArrowRight, Sparkles, Layers } from "lucide-react";
 import { ImageStreamHero, type StreamImage } from "@/components/ui/image-stream-hero";
 import { useSiteContent } from "@/lib/site-content";
 
-import tplCoffee from "@/assets/templates/tpl-ecom-coffee.jpg";
-import tplMobile from "@/assets/templates/tpl-mobile.jpg";
-import tplSneakers from "@/assets/templates/tpl-ecom-sneakers.jpg";
+import tplWebDesign from "@/assets/templates/tpl-web-design.jpg";
+import tplCyberTech from "@/assets/templates/tpl-cyber-tech.jpg";
+import tplMobileApp from "@/assets/templates/tpl-mobile-app.jpg";
+import tplAnalyticsChart from "@/assets/templates/tpl-analytics-chart.jpg";
 import tplPos from "@/assets/templates/tpl-pos.jpg";
 import tplSaas from "@/assets/templates/tpl-saas.jpg";
-import tplFashion from "@/assets/templates/tpl-fashion.jpg";
+import tplMobile from "@/assets/templates/tpl-mobile.jpg";
 import tplEcomDashboard from "@/assets/templates/tpl-ecom-dashboard.jpg";
-import tplEcomPantry from "@/assets/templates/tpl-ecom-pantry.jpg";
-import tplEcomMobile from "@/assets/templates/tpl-ecom-mobile.jpg";
+import tplUiSystem from "@/assets/templates/tpl-ui-system.jpg";
 import tplAgency from "@/assets/templates/tpl-agency.jpg";
-import tplBeauty from "@/assets/templates/tpl-ecom-beauty.jpg";
-import tplJewelry from "@/assets/templates/tpl-ecom-jewelry.jpg";
 
 const STREAM_IMAGES: StreamImage[] = [
   {
-    src: tplCoffee,
-    alt: "Amber & Ash Coffee — Specialty Roastery & E-Commerce Store",
+    src: tplWebDesign,
+    alt: "Modern Web Application Architecture & Cloud Engineering — Creare Mind",
   },
   {
-    src: tplMobile,
-    alt: "Mira Native Mobile App — iOS & Android Fintech Wallet",
+    src: tplCyberTech,
+    alt: "Zero-Trust Cloud Infrastructure & API Microservices — Creare Mind",
   },
   {
-    src: tplSneakers,
-    alt: "Hyperdrive Sneaker Lab — Interactive 3D E-Commerce Drop",
+    src: tplMobileApp,
+    alt: "Cross-Platform Mobile App Engineering & Biometrics — Creare Mind",
+  },
+  {
+    src: tplAnalyticsChart,
+    alt: "Enterprise Executive Analytics & Real-Time Telemetry — Creare Mind",
   },
   {
     src: tplPos,
-    alt: "QuickCart POS — High-Speed Retail Barcode & Thermal Billing",
+    alt: "Retail Touchscreen POS Terminal & Thermal Billing System — Creare Mind",
   },
   {
     src: tplSaas,
-    alt: "CloudScale Enterprise SaaS — Analytics & Billing Engine",
+    alt: "Multi-Tenant Enterprise SaaS Platform & Client Ledger — Creare Mind",
   },
   {
-    src: tplFashion,
-    alt: "Aura Luxury Linen — Editorial Seasonal E-Commerce",
+    src: tplMobile,
+    alt: "FinTech Native Mobile Application & Instant UPI Checkout — Creare Mind",
   },
   {
     src: tplEcomDashboard,
-    alt: "Performance Analytics Dashboard — Real-time telemetry",
+    alt: "Real-Time Telemetry & Systems Observability Dashboard — Creare Mind",
   },
   {
-    src: tplEcomPantry,
-    alt: "Organic Grocer & Artisan Pantry Storefront",
-  },
-  {
-    src: tplEcomMobile,
-    alt: "Crypto Portfolio & Asset Management App",
+    src: tplUiSystem,
+    alt: "Design Tokens, Figma Architecture & Accessible UI Kit — Creare Mind",
   },
   {
     src: tplAgency,
-    alt: "Aether Motion Creative Studio — WebGL Experience",
-  },
-  {
-    src: tplBeauty,
-    alt: "Luminuxe Botanical Skincare — Luxury Digital Boutique",
-  },
-  {
-    src: tplJewelry,
-    alt: "Solis High Jewelry — Custom Diamond Craftsmanship",
+    alt: "Full-Stack Software Engineering Studio Showcase — Creare Mind",
   },
 ];
 

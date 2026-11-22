@@ -82,6 +82,7 @@ import {
   UserX,
   Wallet,
   PieChart,
+  Award,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -132,6 +133,7 @@ import { AdminWalletView } from "@/components/admin/AdminWalletView";
 import { AdminCommsView } from "@/components/admin/AdminCommsView";
 import { AdminSeoView } from "@/components/admin/AdminSeoView";
 import { AdminLogsView } from "@/components/admin/AdminLogsView";
+import { AdminAboutPageView } from "@/components/admin/AdminAboutPageView";
 import { AdminSkeleton } from "@/components/ui/SiteSkeletons";
 
 export const Route = createFileRoute("/admin")({
@@ -232,6 +234,7 @@ type AdminTab =
   | "featureTabs"
   | "templates"
   | "hero"
+  | "aboutPage"
   | "branding";
 
 function AdminPage() {
@@ -1404,6 +1407,7 @@ function AdminPage() {
                 { id: "featureTabs", label: "Interactive Tabs", icon: Sliders, count: (content.featureTabs?.items || DEFAULT_SITE_CONTENT.featureTabs.items).length },
                 { id: "templates", label: "Templates Gallery", icon: Layers, count: content.templates.items.length },
                 { id: "hero", label: "Hero & Videos", icon: Film, count: content.hero.videos.length },
+                { id: "aboutPage", label: "About Us & Leadership", icon: Award, count: (content.about?.founders || DEFAULT_SITE_CONTENT.about.founders).length },
                 { id: "branding", label: "Site & Contacts", icon: Settings },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -4462,6 +4466,13 @@ function AdminPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: ABOUT PAGE & LEADERSHIP CMS                             */}
+          {/* ============================================================ */}
+          {activeTab === "aboutPage" && (
+            <AdminAboutPageView content={content} onUpdate={updateSection} />
           )}
         </main>
       </div>

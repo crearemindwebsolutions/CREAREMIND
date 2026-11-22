@@ -1,13 +1,13 @@
 import type { HeroCardData } from "@/lib/site-content";
 import { DEFAULT_SITE_CONTENT } from "@/lib/site-content";
 import { AdaptiveMedia } from "@/components/ui/adaptive-media";
-import tplBeauty from "@/assets/templates/tpl-ecom-beauty.jpg";
+import tplWebDesign from "@/assets/templates/tpl-web-design.jpg";
 
 export function getMockups(cards?: HeroCardData[]) {
   const cardList = cards && cards.length > 0 ? cards : DEFAULT_SITE_CONTENT.hero.cards;
 
   return cardList.map((card, idx) => {
-    const fallbackImage = DEFAULT_SITE_CONTENT.hero.cards[idx]?.image || tplBeauty;
+    const fallbackImage = DEFAULT_SITE_CONTENT.hero.cards[idx]?.image || tplWebDesign;
     const mediaSrc = card.image || fallbackImage;
 
     return {

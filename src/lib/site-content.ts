@@ -16,6 +16,12 @@ import tplMobile from "@/assets/templates/tpl-mobile.jpg";
 import tplDashboard from "@/assets/templates/tpl-ecom-dashboard.jpg";
 import tplEditorial from "@/assets/templates/tpl-editorial.jpg";
 import tplDesignSystem from "@/assets/templates/tpl-ui-system.jpg";
+import tplWebDesign from "@/assets/templates/tpl-web-design.jpg";
+import tplCyberTech from "@/assets/templates/tpl-cyber-tech.jpg";
+import tplMobileApp from "@/assets/templates/tpl-mobile-app.jpg";
+import tplAnalyticsChart from "@/assets/templates/tpl-analytics-chart.jpg";
+import founderGowthaman from "@/assets/team/founder-gowthaman.png";
+import cofounderDheepan from "@/assets/team/cofounder-dheepan-raj.jpg";
 
 import {
   getDeletedMediaKeys,
@@ -140,6 +146,57 @@ export interface StreamImageData {
   alt: string;
 }
 
+export interface FounderData {
+  id?: string;
+  name: string;
+  role: string;
+  badge: string;
+  tagline: string;
+  image: string;
+  bio: string;
+  quote?: string;
+  quoteDesc?: string;
+  focus: string[];
+  linkedin?: string;
+  instagram?: string;
+  email: string;
+}
+
+export interface AboutValueData {
+  id?: string;
+  title: string;
+  desc: string;
+}
+
+export interface AboutPrincipleData {
+  id?: string;
+  title: string;
+  desc: string;
+}
+
+export interface AboutContentData {
+  badge: string;
+  heading: string;
+  subtitle: string;
+  founders: FounderData[];
+  originBadge: string;
+  originHeading: string;
+  originParagraph1: string;
+  originParagraph2: string;
+  values: AboutValueData[];
+  principlesBadge: string;
+  principlesHeading: string;
+  principlesSubtitle: string;
+  principles: AboutPrincipleData[];
+  ctaBadge: string;
+  ctaHeading: string;
+  ctaSubtitle: string;
+  ctaPrimaryText: string;
+  ctaPrimaryLink: string;
+  ctaSecondaryText: string;
+  ctaSecondaryLink: string;
+}
+
 export interface SiteContent {
   branding: {
     name: string;
@@ -170,6 +227,7 @@ export interface SiteContent {
     videos: string[];
     cards: HeroCardData[];
   };
+  about: AboutContentData;
   worksWheel: {
     label: string;
     heading: string;
@@ -228,48 +286,157 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     videos: DATABASE_HERO_VIDEOS,
     cards: [
       {
-        id: "card-vintage-tee",
-        name: "Vintage Graphic Tee Showcase",
-        title: "Vintage Graphic Tee",
-        subtitle: "Streetwear Editorial Apparel",
-        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205843/zr4hg3h2hcrphavqc0i2.jpg",
+        id: "card-web-platform",
+        name: "Enterprise Web Platform",
+        title: "Enterprise Web Platform",
+        subtitle: "Full-Stack Next.js & React Architecture",
+        image: tplWebDesign,
       },
       {
-        id: "card-silk-sarees",
-        name: "Silk Sarees Heritage",
-        title: "Silk Sarees Heritage",
-        subtitle: "Traditional Luxury Weaves",
-        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205854/ou6cb09gesi6j4c73mvu.jpg",
+        id: "card-saas-cloud",
+        name: "Cloud SaaS & Analytics Engine",
+        title: "Cloud SaaS Engine",
+        subtitle: "Real-time Telemetry & Microservices",
+        image: tplSaas,
       },
       {
-        id: "card-green-saree",
-        name: "Green Silk Saree",
-        title: "Green Silk Saree",
-        subtitle: "Artisan Handloom Collection",
-        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205858/if3twjqxjdnczmkuqjuv.jpg",
+        id: "card-mobile-ecosystem",
+        name: "Native iOS & Android Mobile Ecosystem",
+        title: "Mobile App Ecosystem",
+        subtitle: "Cross-Platform React Native & Offline Sync",
+        image: tplMobileApp,
       },
       {
-        id: "card-chanderi-saree",
-        name: "Chanderi Silk Saree",
-        title: "Chanderi Silk Saree",
-        subtitle: "Heritage Royal Drape",
-        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205861/kspcjbmwaxgfeocyrtd1.jpg",
+        id: "card-ui-system",
+        name: "Modern UI Design System & Components",
+        title: "Modern UI Design System",
+        subtitle: "Tailwind CSS & Headless Components",
+        image: tplDesignSystem,
       },
       {
-        id: "card-striped-shirt",
-        name: "Modern Striped Shirt",
-        title: "Modern Striped Shirt",
-        subtitle: "Contemporary Menswear",
-        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793205864/ext18jxebvtokuiebvcw.jpg",
+        id: "card-pos-billing",
+        name: "Retail Shop POS & Thermal Billing",
+        title: "Shop Billing & POS Counter",
+        subtitle: "High-Speed Barcode & GST Invoicing",
+        image: tplPos,
       },
       {
-        id: "card-luxury-watch",
-        name: "Chronos Titanium Watch",
-        title: "Chronos Titanium Watch",
-        subtitle: "Luxury Swiss Horology",
-        image: "https://res.cloudinary.com/nf3aubag/image/upload/v1793204760/l6udoyphlwtmot00ngyr.jpg",
+        id: "card-cyber-api",
+        name: "Cyber Security & Distributed API Gateway",
+        title: "API Engine & Cloud Infra",
+        subtitle: "Zero-Trust Cloud & Microservices",
+        image: tplCyberTech,
       },
     ],
+  },
+  about: {
+    badge: "Leadership & Vision",
+    heading: "Meet our founder & leadership",
+    subtitle: "Architects and strategists with hands-on experience scaling digital systems from zero to millions of transactions.",
+    founders: [
+      {
+        id: "founder-gowthaman",
+        name: "Gowthaman PR",
+        role: "Founder & Chief Executive Officer (CEO)",
+        badge: "FOUNDER & CEO",
+        tagline: "Founder & Visionary • Creare Mind",
+        image: founderGowthaman,
+        quote: "Building the future of brands. One vision at a time.",
+        quoteDesc: "Software is the ultimate competitive advantage for modern businesses. We don't build generic templates; we engineer robust digital engines that give our clients absolute market authority.",
+        bio: "Gowthaman PR founded Creare Mind with a singular conviction: to engineer high-velocity digital products, enterprise platforms, and brand systems that give ambitious companies absolute market authority. Combining deep expertise in enterprise product strategy, cloud architecture, and client digital transformation, he directs the firm's long-term vision, design standards, and direct client partnerships worldwide. Under his leadership, Creare Mind has delivered 120+ production-grade software platforms across physical retail shops, modern healthcare networks, e-commerce brands, and high-growth startups.",
+        focus: [
+          "Product Strategy",
+          "Enterprise Cloud Architecture",
+          "Brand Systems & Narrative",
+          "POS Billing Engineering",
+          "System Scalability",
+          "Client Growth Operations",
+        ],
+        linkedin: "https://www.linkedin.com/company/creare-mind/",
+        instagram: "https://www.instagram.com/crearemind.in",
+        email: "crearemindwebsolutions@gmail.com",
+      },
+      {
+        id: "founder-dheepan",
+        name: "Dheepan Raj",
+        role: "Co-Founder & Strategic Director",
+        badge: "CO-FOUNDER & STRATEGIC DIRECTOR",
+        tagline: "Co-Founder & Strategy Leader • Creare Mind",
+        image: cofounderDheepan,
+        quote: "Turning bold ideas into real impact. The strategy behind the vision.",
+        quoteDesc: "Execution turns vision into market dominance. At Creare Mind, we don't just craft ideas — we engineer strategic operations, resilient commercial infrastructure, and high-conversion client growth systems that deliver tangible business impact.",
+        bio: "Dheepan Raj co-founded Creare Mind to turn ambitious concepts into scalable, revenue-generating commercial reality. Orchestrating strategic client operations, partnership ecosystems, and project delivery architectures, he ensures every engineering deployment creates real measurable value for our partners.",
+        focus: [
+          "Strategic Growth & Operations",
+          "Business Architecture",
+          "Client Partnership Ecosystems",
+          "Product Delivery Cadence",
+          "Commercial Scaling",
+          "Operational Excellence",
+        ],
+        linkedin: "https://www.linkedin.com/company/creare-mind/",
+        instagram: "https://www.instagram.com/crearemind.in",
+        email: "crearemindwebsolutions@gmail.com",
+      },
+    ],
+    originBadge: "Our Origin & Mission",
+    originHeading: "Why we built Creare Mind",
+    originParagraph1: "Most businesses looking to build digital tools face an agonizing dilemma: either pay astronomical agency retainers for slow delivery, or settle for fragile off-the-shelf templates that crumble as transaction volume grows.",
+    originParagraph2: "We started Creare Mind to offer a fundamentally better path. We pair elite software architects with world-class product designers to deliver bespoke, production-grade solutions with high velocity, total transparency, and unwavering focus on your ROI.",
+    values: [
+      {
+        id: "val-1",
+        title: "Radical Craftsmanship",
+        desc: "We write clean, strictly-typed code that is maintainable, modular, and built to stand the test of time — never bloated page-builder templates.",
+      },
+      {
+        id: "val-2",
+        title: "100% Client Code Ownership",
+        desc: "You own all source code, design files, databases, and deployment pipelines. No locked-in vendor traps or proprietary black boxes.",
+      },
+      {
+        id: "val-3",
+        title: "High-Velocity Sprints",
+        desc: "Structured weekly milestone demos, transparent communication via WhatsApp/Slack, and rapid shipping cadence without cutting corners.",
+      },
+      {
+        id: "val-4",
+        title: "End-to-End Partnership",
+        desc: "From initial napkin wireframes and custom UI design to POS thermal hardware setup and viral social video production, we deliver the complete loop.",
+      },
+    ],
+    principlesBadge: "Our Principles",
+    principlesHeading: "How we work with our clients",
+    principlesSubtitle: "Clear commitments that eliminate risk, delay, and miscommunication.",
+    principles: [
+      {
+        id: "prin-1",
+        title: "Direct Founder Access",
+        desc: "You speak directly with founders and senior engineers who build your system. No account managers playing telephone.",
+      },
+      {
+        id: "prin-2",
+        title: "Strict Sprint Milestones",
+        desc: "Every week features live working demos in a staging environment so you can test features as they are built.",
+      },
+      {
+        id: "prin-3",
+        title: "Hardware Verification",
+        desc: "For POS and billing systems, we physically test receipt thermal printers, barcode scanners, and cash drawer triggers.",
+      },
+      {
+        id: "prin-4",
+        title: "Post-Launch Warranty",
+        desc: "30 days of complimentary bug-fixing and cloud tuning post-deployment to ensure your rollout is 100% stable.",
+      },
+    ],
+    ctaBadge: "Start Your Project",
+    ctaHeading: "Ready to build something extraordinary?",
+    ctaSubtitle: "Let's discuss your requirements, define your scope, and engineer software that drives real business revenue.",
+    ctaPrimaryText: "Start a Conversation",
+    ctaPrimaryLink: "/contact",
+    ctaSecondaryText: "Explore All Services",
+    ctaSecondaryLink: "/services",
   },
   worksWheel: {
     label: "Creare '26",
@@ -278,66 +445,66 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     items: [
       {
         id: "wheel-1",
-        title: "Aether Motion Showcase",
-        image: tplAgency,
-        href: "/templates",
-        category: "Custom Website",
+        title: "Nexus Web Architecture",
+        image: tplWebDesign,
+        href: "/services#web-dev",
+        category: "Custom Web Platform",
       },
       {
         id: "wheel-2",
-        title: "Hyperdrive Sneaker Lab",
-        image: tplSneakers,
-        href: "/templates",
-        category: "Streetwear & Video",
+        title: "CyberTech API Gateway",
+        image: tplCyberTech,
+        href: "/services#web-dev",
+        category: "Cloud Microservices",
       },
       {
         id: "wheel-3",
-        title: "Amber & Ash Coffee",
-        image: tplCoffee,
-        href: "/templates",
-        category: "Retail & Commerce",
+        title: "Nova Mobile Suite",
+        image: tplMobileApp,
+        href: "/services#mobile-apps",
+        category: "iOS & Android Apps",
       },
       {
         id: "wheel-4",
-        title: "Solis High Jewelry",
-        image: tplJewelry,
-        href: "/templates",
-        category: "Luxury Boutique",
+        title: "CloudScale Enterprise SaaS",
+        image: tplSaas,
+        href: "/services#web-dev",
+        category: "SaaS & Dashboards",
       },
       {
         id: "wheel-5",
         title: "QuickCart POS System",
         image: tplPos,
-        href: "/templates",
+        href: "/services#shop-billing",
         category: "Shop Billing POS",
       },
       {
         id: "wheel-6",
-        title: "Luminuxe Skincare",
-        image: tplBeauty,
-        href: "/templates",
-        category: "Botanical Beauty",
+        title: "Atlas Executive BI Dashboard",
+        image: tplAnalyticsChart,
+        href: "/services#web-dev",
+        category: "Telemetry & Metrics",
       },
       {
         id: "wheel-7",
-        title: "Terra & Stone Pottery",
-        image: tplCeramics,
-        href: "/templates",
-        category: "Ceramic Studio",
+        title: "Neo Design Tokens & UI Kit",
+        image: tplDesignSystem,
+        href: "/services#ui-ux",
+        category: "UI/UX Design System",
       },
       {
         id: "wheel-8",
-        title: "Verve Italian Optics",
-        image: tplEyewear,
-        href: "/templates",
-        category: "Custom Eyeworks",
+        title: "Pulse FinTech & Wallet App",
+        image: tplMobile,
+        href: "/services#mobile-apps",
+        category: "Mobile App Engineering",
       },
       {
         id: "wheel-9",
-        title: "Canvas Design Systems",
-        image: tplDesignSystem,
-        href: "/templates",
-        category: "SaaS & Dashboards",
+        title: "Aether Engineering Studio",
+        image: tplAgency,
+        href: "/services#web-dev",
+        category: "Full-Stack Development",
       },
     ],
   },
@@ -347,66 +514,66 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     items: [
       {
         id: "tpl-1",
-        name: "Aether Creative Agency",
-        img: tplAgency,
+        name: "Nexus Web Architecture",
+        img: tplWebDesign,
         cat: "Custom Websites",
-        tagline: "Editorial Swiss-style design portfolio with high-impact kinetic typography.",
+        tagline: "Modern Next.js web application architecture with server-rendered UI and dynamic caching.",
       },
       {
         id: "tpl-2",
-        name: "Hyperdrive Sneaker Lab",
-        img: tplSneakers,
-        cat: "Social Media & Video",
-        tagline: "High-octane streetwear brand showcase with cinematic video loops.",
+        name: "CyberTech API Gateway",
+        img: tplCyberTech,
+        cat: "Custom Websites",
+        tagline: "Zero-trust microservices API platform with edge routing and developer portal.",
       },
       {
         id: "tpl-3",
-        name: "Amber & Ash Coffee",
-        img: tplCoffee,
-        cat: "Retail & Commerce",
-        tagline: "Artisan roastery e-commerce platform with subscription box ordering.",
+        name: "Nova Mobile Suite",
+        img: tplMobileApp,
+        cat: "Mobile Apps",
+        tagline: "Cross-platform iOS and Android mobile app with biometric auth and offline synchronization.",
       },
       {
         id: "tpl-4",
-        name: "Solis High Jewelry",
-        img: tplJewelry,
-        cat: "Retail & Commerce",
-        tagline: "Luxury diamond boutique portal with bespoke concierge consultation.",
+        name: "CloudScale Enterprise SaaS",
+        img: tplSaas,
+        cat: "SaaS & Dashboards",
+        tagline: "Multi-tenant cloud platform with automated billing, analytics dashboards, and role-based access.",
       },
       {
         id: "tpl-5",
         name: "QuickCart Retail POS",
         img: tplPos,
         cat: "Shop Billing POS",
-        tagline: "Touchscreen iPad cashier checkout with thermal GST receipt printing.",
+        tagline: "Touchscreen iPad cashier checkout with thermal GST receipt printing and barcode scanning.",
       },
       {
         id: "tpl-6",
-        name: "Luminuxe Botanical Beauty",
-        img: tplBeauty,
-        cat: "Retail & Commerce",
-        tagline: "Organic skincare shop with ingredient breakdowns and customer reviews.",
+        name: "Atlas Executive BI Dashboard",
+        img: tplAnalyticsChart,
+        cat: "SaaS & Dashboards",
+        tagline: "Real-time enterprise metrics, revenue telemetry, and sales forecasting charts.",
       },
       {
         id: "tpl-7",
-        name: "Terra & Stone Studio",
-        img: tplCeramics,
+        name: "Neo Design Tokens & UI Kit",
+        img: tplDesignSystem,
         cat: "Custom Websites",
-        tagline: "Handcrafted ceramics catalog with workshop booking integration.",
+        tagline: "Scalable design system with accessible components, Figma tokens, and dark mode.",
       },
       {
         id: "tpl-8",
-        name: "Verve Italian Optics",
-        img: tplEyewear,
-        cat: "Retail & Commerce",
-        tagline: "Handmade eyewear boutique with virtual try-on and prescription order flow.",
+        name: "Pulse FinTech & Wallet App",
+        img: tplMobile,
+        cat: "Mobile Apps",
+        tagline: "High-velocity consumer finance mobile app with instant UPI payments and ledger.",
       },
       {
         id: "tpl-9",
-        name: "Canvas Design Systems",
-        img: tplSaas,
-        cat: "SaaS & Dashboards",
-        tagline: "Multi-branch enterprise revenue reports, tax ledger & sales charts.",
+        name: "Aether Engineering Studio",
+        img: tplAgency,
+        cat: "Custom Websites",
+        tagline: "High-velocity software engineering studio showcase with case studies and interactive 3D.",
       },
     ],
   },
@@ -417,7 +584,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
         id: "fc-1",
         t: "Website Development",
         d: "Mobile-friendly websites with WhatsApp chat, online payments & Google search setup.",
-        img: tplAgency,
+        img: tplWebDesign,
         link: "/services#web-dev",
       },
       {
@@ -436,17 +603,17 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       },
       {
         id: "fc-4",
-        t: "Social Media Team",
-        d: "Daily branded graphics, viral reels, engaging captions & organic follower growth.",
-        img: tplFashion,
-        link: "/services#social-media",
+        t: "Cloud SaaS Platforms",
+        d: "Full-stack cloud applications, automated billing ledgers, and secure database architecture.",
+        img: tplSaas,
+        link: "/services#web-dev",
       },
       {
         id: "fc-5",
-        t: "Video Production",
-        d: "High-retention Instagram Reels & promo video ads with animated captions & sound effects.",
-        img: tplCreative,
-        link: "/services#video-editing",
+        t: "UI/UX Design Systems",
+        d: "High-conversion digital interfaces, interactive prototypes, and production-ready component libraries.",
+        img: tplDesignSystem,
+        link: "/services#ui-ux",
       },
     ],
   },
@@ -456,101 +623,101 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     items: [
       {
         id: "ft-1",
-        tab: "Services",
+        tab: "Web Platforms",
         page: "Web Development",
-        serifTitle: "Offer services",
-        subtitle: "Promote your experiences and offerings, collect attendee information, and get paid for your work.",
-        bgImage: tplAgency,
+        serifTitle: "High-velocity web platforms",
+        subtitle: "Custom Next.js & React web applications with edge caching, automated SEO, WhatsApp checkout, and payment gateways.",
+        bgImage: tplWebDesign,
         theme: "dark",
-        mockupHeader: "ACHELOUS SPA",
-        mockupTitle: "OUR RETREATS",
-        mockupMainImage: tplCreative,
-        mockupSideTop: tplArch,
-        mockupSideBottom: tplCeramics,
+        mockupHeader: "DEV PLATFORM",
+        mockupTitle: "ENTERPRISE CLOUD SUITE",
+        mockupMainImage: tplCyberTech,
+        mockupSideTop: tplSaas,
+        mockupSideBottom: tplAnalyticsChart,
       },
       {
         id: "ft-2",
-        tab: "Online Store",
+        tab: "Cloud & SaaS",
         page: "Web Development",
-        serifTitle: "Sell products",
-        subtitle: "Merchandise your products, manage inventory and orders, and offer multiple express payment methods.",
-        bgImage: tplSneakers,
+        serifTitle: "Scalable cloud SaaS systems",
+        subtitle: "Full-stack software products with real-time multi-tenant databases, customer billing dashboards, and zero downtime.",
+        bgImage: tplSaas,
         theme: "dark",
-        mockupHeader: "STUDIO STORE",
-        mockupTitle: "COLLECTION 2026",
-        mockupMainImage: tplCeramics,
-        mockupSideTop: tplCreative,
-        mockupSideBottom: tplArch,
+        mockupHeader: "CLOUD CONSOLE",
+        mockupTitle: "SERVERLESS INFRASTRUCTURE",
+        mockupMainImage: tplDashboard,
+        mockupSideTop: tplCyberTech,
+        mockupSideBottom: tplWebDesign,
       },
       {
         id: "ft-3",
-        tab: "Invoicing",
+        tab: "Shop Billing & POS",
         page: "Billing Systems for Shops",
-        serifTitle: "Invoice clients",
-        subtitle: "Legitimize your business and get paid with professional proposals, computerized billing, and live inventory.",
+        serifTitle: "Super-fast barcode POS billing",
+        subtitle: "Legitimize and streamline your retail business with thermal GST printing, instant barcode lookups, and inventory alerts.",
         bgImage: tplPos,
         theme: "cream",
-        mockupHeader: "HEIKKI INTERIORS",
-        mockupTitle: "Materials sourcing and curation",
-        mockupMainImage: tplCeramics,
-        mockupSideTop: tplPos,
+        mockupHeader: "CREARE POS DESK",
+        mockupTitle: "Thermal Barcode Cashier",
+        mockupMainImage: tplPos,
+        mockupSideTop: tplAnalyticsChart,
         mockupSideBottom: tplDashboard,
       },
       {
         id: "ft-4",
         tab: "Mobile Apps",
         page: "Mobile Apps",
-        serifTitle: "Launch native mobile apps",
-        subtitle: "Custom iOS and Android apps with biometric login, instant push notifications, and seamless offline data sync.",
+        serifTitle: "Native iOS & Android mobile apps",
+        subtitle: "Custom cross-platform applications with biometric authentication, instant push alerts, offline syncing, and Google Play launch.",
         bgImage: tplMobile,
         theme: "dark",
-        mockupHeader: "LUMEN APP",
-        mockupTitle: "NATIVE IOS & ANDROID",
-        mockupMainImage: tplMobile,
-        mockupSideTop: tplCreative,
-        mockupSideBottom: tplArch,
+        mockupHeader: "MOBILE ENGINEERING",
+        mockupTitle: "NATIVE CROSS-PLATFORM",
+        mockupMainImage: tplMobileApp,
+        mockupSideTop: tplWebDesign,
+        mockupSideBottom: tplCyberTech,
       },
       {
         id: "ft-5",
-        tab: "Social Media",
-        page: "Social Media Management",
-        serifTitle: "Scale your social media",
-        subtitle: "Daily branded graphics, high-retention viral reels, engaging carousels, and rapid follower growth for your brand.",
-        bgImage: tplFashion,
+        tab: "UI/UX Systems",
+        page: "UI/UX Design",
+        serifTitle: "Design systems & interactive UI",
+        subtitle: "Pixel-perfect Figma design tokens, animated micro-interactions, dark mode aesthetics, and robust component architecture.",
+        bgImage: tplDesignSystem,
         theme: "dark",
-        mockupHeader: "STUDIO CREATIVE",
-        mockupTitle: "VIRAL FEED & REELS",
-        mockupMainImage: tplFashion,
-        mockupSideTop: tplCreative,
-        mockupSideBottom: tplArch,
+        mockupHeader: "NEO DESIGN SYSTEM",
+        mockupTitle: "ACCESSIBLE UI TOKENS",
+        mockupMainImage: tplDesignSystem,
+        mockupSideTop: tplWebDesign,
+        mockupSideBottom: tplCreative,
       },
       {
         id: "ft-6",
-        tab: "Video Editing",
-        page: "Video Editing & Reels",
-        serifTitle: "Produce viral video ads",
-        subtitle: "Scroll-stopping Instagram Reels, YouTube Shorts, and promo commercials with animated kinetic captions.",
-        bgImage: tplCreative,
+        tab: "APIs & Telemetry",
+        page: "Web Development",
+        serifTitle: "Real-time telemetry & API gateways",
+        subtitle: "High-throughput microservices, sub-millisecond edge routes, live WebSocket connections, and real-time observability.",
+        bgImage: tplAnalyticsChart,
         theme: "dark",
-        mockupHeader: "TIMELINE PRO",
-        mockupTitle: "CINEMATIC 4K EDIT",
-        mockupMainImage: tplCreative,
-        mockupSideTop: tplEditorial,
-        mockupSideBottom: tplArch,
+        mockupHeader: "API TELEMETRY",
+        mockupTitle: "HIGH-VELOCITY BACKEND",
+        mockupMainImage: tplAnalyticsChart,
+        mockupSideTop: tplCyberTech,
+        mockupSideBottom: tplSaas,
       },
       {
         id: "ft-7",
-        tab: "Portfolio",
-        page: "UI/UX Design",
-        serifTitle: "Showcase your work",
-        subtitle: "Build a portfolio website to highlight projects, share your story, and help clients get in contact.",
-        bgImage: tplArch,
+        tab: "DevOps & Cloud",
+        page: "Web Development",
+        serifTitle: "Automated CI/CD & cloud scaling",
+        subtitle: "Automated deployment pipelines, Docker container orchestration, SSL/TLS hardening, and Vercel edge networks.",
+        bgImage: tplCyberTech,
         theme: "dark",
-        mockupHeader: "NIA DESIGN",
-        mockupTitle: "NIA DESIGN",
-        mockupMainImage: tplArch,
-        mockupSideTop: tplCreative,
-        mockupSideBottom: tplCeramics,
+        mockupHeader: "DEV PIPELINE",
+        mockupTitle: "ZERO-DOWNTIME CI/CD",
+        mockupMainImage: tplCyberTech,
+        mockupSideTop: tplSaas,
+        mockupSideBottom: tplDesignSystem,
       },
     ],
   },
@@ -614,16 +781,16 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   },
   streamImages: {
     items: [
-      { id: "stream-1", src: tplCoffee, alt: "Amber & Ash Coffee — Specialty Roastery & E-Commerce Store" },
-      { id: "stream-2", src: tplMobile, alt: "Mira Native Mobile App — iOS & Android Fintech Wallet" },
-      { id: "stream-3", src: tplSneakers, alt: "Hyperdrive Sneaker Lab — Interactive 3D E-Commerce Drop" },
+      { id: "stream-1", src: tplWebDesign, alt: "Next.js & React Enterprise Web Platform" },
+      { id: "stream-2", src: tplSaas, alt: "CloudScale Enterprise SaaS & Telemetry Dashboard" },
+      { id: "stream-3", src: tplMobileApp, alt: "Mira iOS & Android Native Mobile Ecosystem" },
       { id: "stream-4", src: tplPos, alt: "QuickCart POS — High-Speed Retail Barcode & Thermal Billing" },
-      { id: "stream-5", src: tplSaas, alt: "CloudScale Enterprise SaaS — Analytics & Billing Engine" },
-      { id: "stream-6", src: tplFashion, alt: "Aura Luxury Linen — Editorial Seasonal E-Commerce" },
-      { id: "stream-7", src: tplDashboard, alt: "Performance Analytics Dashboard — Real-time telemetry" },
-      { id: "stream-8", src: tplAgency, alt: "Aether Motion Creative Studio — WebGL Experience" },
-      { id: "stream-9", src: tplBeauty, alt: "Luminuxe Botanical Skincare — Luxury Digital Boutique" },
-      { id: "stream-10", src: tplJewelry, alt: "Solis High Jewelry — Custom Diamond Craftsmanship" },
+      { id: "stream-5", src: tplDesignSystem, alt: "Headless UI Design System & Component Architecture" },
+      { id: "stream-6", src: tplCyberTech, alt: "Cyber Security & Distributed Cloud Architecture" },
+      { id: "stream-7", src: tplDashboard, alt: "Performance Analytics Dashboard — Real-time Telemetry" },
+      { id: "stream-8", src: tplAgency, alt: "Aether Motion Creative WebGL & 3D Interactive Web" },
+      { id: "stream-9", src: tplAnalyticsChart, alt: "Real-Time Telemetry & Database Analytics Engine" },
+      { id: "stream-10", src: tplCreative, alt: "Custom Software Engineering & Cloud Infrastructure" },
     ],
   },
 };
@@ -727,41 +894,112 @@ export function getSavedSiteContent(): SiteContent {
       }
     }
 
+    const hasOutdatedApparelCards = (parsed.hero?.cards || []).some(
+      (c: any) =>
+        c.id?.includes("vintage") ||
+        c.id?.includes("saree") ||
+        c.id?.includes("shirt") ||
+        c.name?.toLowerCase().includes("saree") ||
+        c.name?.toLowerCase().includes("tee")
+    );
+    const validHeroCards =
+      parsed.hero?.cards?.length && !hasOutdatedApparelCards
+        ? parsed.hero.cards
+        : DEFAULT_SITE_CONTENT.hero.cards;
+
+    const hasOutdatedStreamImages = (parsed.streamImages?.items || []).some(
+      (s: any) =>
+        s.alt?.toLowerCase().includes("coffee") ||
+        s.alt?.toLowerCase().includes("jewelry") ||
+        s.alt?.toLowerCase().includes("linen") ||
+        s.alt?.toLowerCase().includes("sneaker")
+    );
+    const validStreamItems =
+      parsed.streamImages?.items?.length && !hasOutdatedStreamImages
+        ? parsed.streamImages.items
+        : DEFAULT_SITE_CONTENT.streamImages.items;
+
+    const hasOutdatedWheel = (parsed.worksWheel?.items || []).some(
+      (w: any) =>
+        w.title?.toLowerCase().includes("sneaker") ||
+        w.title?.toLowerCase().includes("coffee") ||
+        w.title?.toLowerCase().includes("jewelry") ||
+        w.title?.toLowerCase().includes("skincare") ||
+        w.title?.toLowerCase().includes("pottery")
+    );
+    const validWorksWheel =
+      parsed.worksWheel?.items?.length && !hasOutdatedWheel
+        ? parsed.worksWheel.items.filter((item: any) => !deleted.has(item.image) && !deleted.has(item.id || ""))
+        : DEFAULT_SITE_CONTENT.worksWheel.items;
+
+    const hasOutdatedTemplates = (parsed.templates?.items || []).some(
+      (t: any) =>
+        t.name?.toLowerCase().includes("sneaker") ||
+        t.name?.toLowerCase().includes("coffee") ||
+        t.name?.toLowerCase().includes("jewelry") ||
+        t.name?.toLowerCase().includes("beauty") ||
+        t.name?.toLowerCase().includes("optics")
+    );
+    const validTemplates =
+      parsed.templates?.items?.length && !hasOutdatedTemplates
+        ? parsed.templates.items.filter((item: any) => !deleted.has(item.img) && !deleted.has(item.id || ""))
+        : DEFAULT_SITE_CONTENT.templates.items;
+
+    const hasOutdatedFeatureCards = (parsed.featureCards?.items || []).some(
+      (fc: any) =>
+        fc.t?.toLowerCase().includes("social media") ||
+        fc.t?.toLowerCase().includes("video production")
+    );
+    const validFeatureCards =
+      parsed.featureCards?.items?.length && !hasOutdatedFeatureCards
+        ? parsed.featureCards.items.filter((item: any) => !deleted.has(item.img) && !deleted.has(item.id || ""))
+        : DEFAULT_SITE_CONTENT.featureCards.items;
+
+    const hasOutdatedFeatureTabs = (parsed.featureTabs?.items || []).some(
+      (ft: any) =>
+        ft.mockupHeader?.toLowerCase().includes("achelous") ||
+        ft.mockupHeader?.toLowerCase().includes("heikki") ||
+        ft.mockupHeader?.toLowerCase().includes("studio store")
+    );
+    const validFeatureTabs =
+      parsed.featureTabs?.items?.length && !hasOutdatedFeatureTabs
+        ? parsed.featureTabs.items.filter((item: any) => !deleted.has(item.bgImage) && !deleted.has(item.id || ""))
+        : DEFAULT_SITE_CONTENT.featureTabs.items;
+
     return {
       branding: { ...DEFAULT_SITE_CONTENT.branding, ...(parsed.branding || {}) },
       hero: {
         ...DEFAULT_SITE_CONTENT.hero,
         ...(parsed.hero || {}),
         videos: heroVideos,
-        cards: parsed.hero?.cards?.length ? parsed.hero.cards : DEFAULT_SITE_CONTENT.hero.cards,
+        cards: validHeroCards,
+      },
+      about: {
+        ...DEFAULT_SITE_CONTENT.about,
+        ...(parsed.about || {}),
+        founders: parsed.about?.founders?.length ? parsed.about.founders : DEFAULT_SITE_CONTENT.about.founders,
+        values: parsed.about?.values?.length ? parsed.about.values : DEFAULT_SITE_CONTENT.about.values,
+        principles: parsed.about?.principles?.length ? parsed.about.principles : DEFAULT_SITE_CONTENT.about.principles,
       },
       worksWheel: {
         ...DEFAULT_SITE_CONTENT.worksWheel,
         ...(parsed.worksWheel || {}),
-        items: (parsed.worksWheel?.items?.length ? parsed.worksWheel.items : DEFAULT_SITE_CONTENT.worksWheel.items).filter(
-          (item: any) => !deleted.has(item.image) && !deleted.has(item.id || "")
-        ),
+        items: validWorksWheel,
       },
       templates: {
         ...DEFAULT_SITE_CONTENT.templates,
         ...(parsed.templates || {}),
-        items: (parsed.templates?.items?.length ? parsed.templates.items : DEFAULT_SITE_CONTENT.templates.items).filter(
-          (item: any) => !deleted.has(item.img) && !deleted.has(item.id || "")
-        ),
+        items: validTemplates,
       },
       featureCards: {
         ...DEFAULT_SITE_CONTENT.featureCards,
         ...(parsed.featureCards || {}),
-        items: (parsed.featureCards?.items?.length ? parsed.featureCards.items : DEFAULT_SITE_CONTENT.featureCards.items).filter(
-          (item: any) => !deleted.has(item.img) && !deleted.has(item.id || "")
-        ),
+        items: validFeatureCards,
       },
       featureTabs: {
         ...DEFAULT_SITE_CONTENT.featureTabs,
         ...(parsed.featureTabs || {}),
-        items: (parsed.featureTabs?.items?.length ? parsed.featureTabs.items : DEFAULT_SITE_CONTENT.featureTabs.items).filter(
-          (item: any) => !deleted.has(item.bgImage) && !deleted.has(item.id || "")
-        ),
+        items: validFeatureTabs,
       },
       services: {
         ...DEFAULT_SITE_CONTENT.services,
@@ -771,7 +1009,7 @@ export function getSavedSiteContent(): SiteContent {
       streamImages: {
         ...DEFAULT_SITE_CONTENT.streamImages,
         ...(parsed.streamImages || {}),
-        items: (parsed.streamImages?.items?.length ? parsed.streamImages.items : DEFAULT_SITE_CONTENT.streamImages.items).filter(
+        items: validStreamItems.filter(
           (item: any) => !deleted.has(item.src) && !deleted.has(item.id || "")
         ),
       },
@@ -850,6 +1088,29 @@ export function useSiteContent() {
                     : prev.hero?.cards?.length
                     ? prev.hero.cards
                     : DEFAULT_SITE_CONTENT.hero.cards,
+              },
+              about: {
+                ...DEFAULT_SITE_CONTENT.about,
+                ...(prev.about || {}),
+                ...(cloudContent.about || {}),
+                founders:
+                  cloudContent.about?.founders?.length
+                    ? cloudContent.about.founders
+                    : prev.about?.founders?.length
+                    ? prev.about.founders
+                    : DEFAULT_SITE_CONTENT.about.founders,
+                values:
+                  cloudContent.about?.values?.length
+                    ? cloudContent.about.values
+                    : prev.about?.values?.length
+                    ? prev.about.values
+                    : DEFAULT_SITE_CONTENT.about.values,
+                principles:
+                  cloudContent.about?.principles?.length
+                    ? cloudContent.about.principles
+                    : prev.about?.principles?.length
+                    ? prev.about.principles
+                    : DEFAULT_SITE_CONTENT.about.principles,
               },
               services: {
                 ...DEFAULT_SITE_CONTENT.services,

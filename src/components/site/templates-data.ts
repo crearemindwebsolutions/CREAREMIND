@@ -1,4 +1,4 @@
-import tplFashion from "@/assets/templates/tpl-fashion.jpg";
+import tplCyberTech from "@/assets/templates/tpl-cyber-tech.jpg";
 import tplSaas from "@/assets/templates/tpl-saas.jpg";
 import tplAgency from "@/assets/templates/tpl-agency.jpg";
 import tplMobile from "@/assets/templates/tpl-mobile.jpg";
@@ -35,10 +35,10 @@ export interface TemplateProject {
 
 export const TEMPLATES: TemplateProject[] = [
   {
-    name: "Aura Boutique & Apparel",
-    img: tplFashion,
-    cat: "Retail & Commerce",
-    tagline: "Minimalist luxury e-commerce with seasonal lookbooks & one-click checkout.",
+    name: "Nexus Cloud API Platform",
+    img: tplCyberTech,
+    cat: "Custom Websites",
+    tagline: "Scalable enterprise REST APIs, microservices gateway, and developer docs.",
   },
   {
     name: "Flux Cloud Analytics",
