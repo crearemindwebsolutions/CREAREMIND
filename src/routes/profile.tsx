@@ -637,7 +637,7 @@ function ProfilePage() {
               </Link>
 
               <a
-                href="https://wa.me/918072719603?text=Hello%20Creare%20Mind,%20I'd%20like%20to%20discuss%20a%20project."
+                href="https://wa.me/916382068495?text=Hello%20Creare%20Mind,%20I'd%20like%20to%20discuss%20a%20project."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group rounded-2xl border border-ink/15 bg-paper p-6 transition-all hover:border-ink hover:shadow-md"
@@ -792,7 +792,7 @@ function ProfilePage() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="+91 80727 19603"
+                  placeholder="+91 63820 68495"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className={inputClass}
@@ -1116,7 +1116,7 @@ function ProfilePage() {
                     Get in touch with your assigned developer or manager directly for instant changes and feature requests.
                   </p>
                   <a
-                    href="https://wa.me/918072719603?text=Hello%20Creare%20Mind%20team,%20I%20have%20an%20inquiry%20regarding%20my%20account."
+                    href="https://wa.me/916382068495?text=Hello%20Creare%20Mind%20team,%20I%20have%20an%20inquiry%20regarding%20my%20account."
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:underline"

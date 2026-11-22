@@ -446,7 +446,7 @@ function AuthPage() {
             created_at: "2026-01-15T10:30:00Z",
             user_metadata: {
               full_name: "Gowtham Dharshan",
-              phone: "+91 80727 19603",
+              phone: "+91 63820 68495",
               role: "admin",
             },
             app_metadata: {

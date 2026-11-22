@@ -39,7 +39,7 @@ export const DEFAULT_COMMS_TEMPLATES: CommsTemplate[] = [
     title: "Invoice & UPI Payment Details",
     category: "Invoice & Payment",
     message:
-      "Dear {name}, your invoice #{invoiceNumber} for {amount} is generated for {service}. You can complete payment via UPI: 8072719603@upi or direct bank transfer. Kindly share the screenshot/UTR once transferred so we can issue your tax receipt immediately.",
+      "Dear {name}, your invoice #{invoiceNumber} for {amount} is generated for {service}. You can complete payment via UPI: 6382068495@upi or direct bank transfer. Kindly share the screenshot/UTR once transferred so we can issue your tax receipt immediately.",
   },
   {
     id: "launch-handover",

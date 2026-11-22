@@ -27,7 +27,7 @@ export const SCHEMA_ORGANIZATION = {
       "description":
         "Creare Mind is a software development and digital agency that builds custom websites, mobile apps, shop billing POS systems, video editing, and social media management for ambitious businesses.",
       "email": "crearemindwebsolutions@gmail.com",
-      "telephone": "+918072719603",
+      "telephone": "+916382068495",
       "sameAs": [
         "https://www.instagram.com/crearemind.in",
         "https://www.linkedin.com/company/creare-mind/"
@@ -68,7 +68,7 @@ export const SCHEMA_ORGANIZATION = {
       "parentOrganization": {
         "@id": `${SITE_URL}/#organization`
       },
-      "telephone": "+918072719603",
+      "telephone": "+916382068495",
       "priceRange": "$$",
       "currenciesAccepted": "INR, USD, EUR, GBP",
       "paymentAccepted": "Cash, Credit Card, UPI, Bank Transfer",

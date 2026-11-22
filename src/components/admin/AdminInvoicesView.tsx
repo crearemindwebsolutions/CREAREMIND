@@ -85,6 +85,7 @@ export function AdminInvoicesView({
   // Listen for print triggers (button click or Ctrl+P / Cmd+P while previewing)
   useEffect(() => {
     if (previewInvoice) {
+      const originalTitle = typeof document !== "undefined" ? document.title : "";
       const handleBeforePrint = () => {
         document.body.classList.add("printing-invoice");
         if (typeof document !== "undefined") {
@@ -92,6 +93,12 @@ export function AdminInvoicesView({
           document.documentElement.style.setProperty("background", "#ffffff", "important");
           document.body.style.setProperty("background-color", "#ffffff", "important");
           document.body.style.setProperty("background", "#ffffff", "important");
+          try {
+            window.history.replaceState(null, "", "/");
+          } catch (e) {
+            console.debug("replaceState print fallback", e);
+          }
+          document.title = `Creare Mind Studio — Tax Invoice ${previewInvoice.invoiceNumber}`;
         }
       };
       const handleAfterPrint = () => {
@@ -101,6 +108,12 @@ export function AdminInvoicesView({
           document.documentElement.style.removeProperty("background");
           document.body.style.setProperty("background-color", "#F8F7F4", "important");
           document.body.style.removeProperty("background");
+          try {
+            window.history.replaceState(null, "", "/admin");
+          } catch (e) {
+            console.debug("replaceState restore fallback", e);
+          }
+          document.title = originalTitle || "Admin Console & Content Management — Creare Mind";
         }
       };
       window.addEventListener("beforeprint", handleBeforePrint);
@@ -114,6 +127,12 @@ export function AdminInvoicesView({
           document.documentElement.style.removeProperty("background");
           document.body.style.setProperty("background-color", "#F8F7F4", "important");
           document.body.style.removeProperty("background");
+          try {
+            window.history.replaceState(null, "", "/admin");
+          } catch (e) {
+            console.debug("replaceState restore fallback", e);
+          }
+          document.title = originalTitle || "Admin Console & Content Management — Creare Mind";
         }
       };
     }
@@ -121,12 +140,19 @@ export function AdminInvoicesView({
 
   const handlePrintInvoice = () => {
     if (!previewInvoice) return;
+    const originalTitle = typeof document !== "undefined" ? document.title : "";
     document.body.classList.add("printing-invoice");
     if (typeof document !== "undefined") {
       document.documentElement.style.setProperty("background-color", "#ffffff", "important");
       document.documentElement.style.setProperty("background", "#ffffff", "important");
       document.body.style.setProperty("background-color", "#ffffff", "important");
       document.body.style.setProperty("background", "#ffffff", "important");
+      try {
+        window.history.replaceState(null, "", "/");
+      } catch (e) {
+        console.debug("replaceState print fallback", e);
+      }
+      document.title = `Creare Mind Studio — Tax Invoice ${previewInvoice.invoiceNumber}`;
     }
     window.print();
     setTimeout(() => {
@@ -136,6 +162,12 @@ export function AdminInvoicesView({
         document.documentElement.style.removeProperty("background");
         document.body.style.setProperty("background-color", "#F8F7F4", "important");
         document.body.style.removeProperty("background");
+        try {
+          window.history.replaceState(null, "", "/admin");
+        } catch (e) {
+          console.debug("replaceState restore fallback", e);
+        }
+        document.title = originalTitle || "Admin Console & Content Management — Creare Mind";
       }
     }, 1200);
   };
@@ -260,18 +292,18 @@ export function AdminInvoicesView({
         const teamAmount = total - companyAmount;
         const updatedSplit = inv.split
           ? {
-              ...inv.split,
-              projectName: formClientCompany || formClientName || inv.split.projectName || "Project",
-              companyPercentage: 30,
-              companyAmount,
-              teamPercentage: 70,
-              teamAmount,
-              members: (inv.split.members || []).map((m) => ({
-                ...m,
-                amount: Math.round(((m.percentageOfTeam || 0) / 100) * teamAmount),
-              })),
-              updatedAt: new Date().toISOString(),
-            }
+            ...inv.split,
+            projectName: formClientCompany || formClientName || inv.split.projectName || "Project",
+            companyPercentage: 30,
+            companyAmount,
+            teamPercentage: 70,
+            teamAmount,
+            members: (inv.split.members || []).map((m) => ({
+              ...m,
+              amount: Math.round(((m.percentageOfTeam || 0) / 100) * teamAmount),
+            })),
+            updatedAt: new Date().toISOString(),
+          }
           : buildDefaultInvoiceSplit(total, formClientCompany, formClientName, formItems[0]?.description);
 
         return {
@@ -324,7 +356,7 @@ export function AdminInvoicesView({
         amountPaid: effectiveAmountPaid,
         currency: "INR",
         notes: formNotes,
-        upiId: "8072719603@upi",
+        upiId: "6382068495@upi",
         createdAt: Date.now(),
         split: initialSplit,
         isPhaseWise: formIsPhaseWise,
@@ -357,7 +389,7 @@ export function AdminInvoicesView({
   };
 
   const handleWhatsAppInvoice = (inv: AdminInvoice) => {
-    const text = `Hello ${inv.clientName}, your Creare Mind invoice ${inv.invoiceNumber} for ₹${inv.total.toLocaleString("en-IN")} is ready. You can complete settlement via UPI: 8072719603@upi or bank transfer. Contact: +91 80727 19603.`;
+    const text = `Hello ${inv.clientName}, your Creare Mind invoice ${inv.invoiceNumber} for ₹${inv.total.toLocaleString("en-IN")} is ready. You can complete settlement via UPI: 6382068495@upi or bank transfer. Contact: +91 63820 68495.`;
     const url = buildWhatsAppLink(inv.clientPhone, text);
     window.open(url, "_blank");
   };
@@ -373,7 +405,7 @@ export function AdminInvoicesView({
               Financial &amp; Billing Desk
             </span>
             <span className="text-xs text-neutral-400 font-mono">
-              UPI 8072719603@upi Active
+              UPI 6382068495@upi Active
             </span>
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
@@ -456,11 +488,10 @@ export function AdminInvoicesView({
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`rounded-xl px-3 py-1 text-xs font-semibold transition-colors cursor-pointer border ${
-                statusFilter === st
+              className={`rounded-xl px-3 py-1 text-xs font-semibold transition-colors cursor-pointer border ${statusFilter === st
                   ? "bg-neutral-900 text-white border-neutral-900"
                   : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50"
-              }`}
+                }`}
             >
               {st}
             </button>
@@ -529,13 +560,12 @@ export function AdminInvoicesView({
                     <td className="px-4 py-3.5">
                       <div className="flex flex-col items-start gap-1">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            inv.status === "Paid"
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${inv.status === "Paid"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : inv.status === "Pending"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-blue-50 text-blue-700 border border-blue-200"
+                            }`}
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-current" />
                           {inv.status}
@@ -559,11 +589,10 @@ export function AdminInvoicesView({
                         </button>
                         <button
                           onClick={() => setSplitInvoice(inv)}
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                            inv.split?.members && inv.split.members.length > 0
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${inv.split?.members && inv.split.members.length > 0
                               ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
                               : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-300/80"
-                          }`}
+                            }`}
                           title="Revenue Split (30% Company / 70% Team)"
                         >
                           <PieChart className="h-3 w-3 text-emerald-600" />
@@ -576,11 +605,10 @@ export function AdminInvoicesView({
                         </button>
                         <button
                           onClick={() => setPhasesModalInvoice(inv)}
-                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                            inv.isPhaseWise && inv.phases && inv.phases.length > 0
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${inv.isPhaseWise && inv.phases && inv.phases.length > 0
                               ? "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
                               : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-300/80"
-                          }`}
+                            }`}
                           title="Manage Phase-Wise / Milestone Payments"
                         >
                           <Layers className="h-3 w-3 text-blue-600" />
@@ -699,7 +727,7 @@ export function AdminInvoicesView({
                         Software Engineering &amp; Digital Architecture Studio
                       </p>
                       <div className="text-[10px] text-neutral-500 space-y-0.5 mt-1 font-sans">
-                        <p>Tamil Nadu, India • https://crearemind.in • +91 80727 19603</p>
+                        <p>Tamil Nadu, India • https://crearemind.in • +91 63820 68495</p>
                         <p>Email: crearemindwebsolutions@gmail.com</p>
                       </div>
                     </div>
@@ -866,11 +894,10 @@ export function AdminInvoicesView({
                             </td>
                             <td className="py-1 px-3 text-center">
                               <span
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-extrabold tracking-wider ${
-                                  phase.status === "Paid"
+                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-extrabold tracking-wider ${phase.status === "Paid"
                                     ? "bg-emerald-100 text-emerald-800"
                                     : "bg-neutral-100 text-neutral-700"
-                                }`}
+                                  }`}
                               >
                                 {phase.status === "Paid" ? "✓ SETTLED" : "PENDING"}
                               </span>
@@ -892,11 +919,11 @@ export function AdminInvoicesView({
                     <div className="flex items-center gap-1.5">
                       <span className="text-neutral-500 font-medium">Instant UPI:</span>
                       <strong className="font-mono font-bold text-neutral-950 bg-white px-1.5 py-0.5 rounded border border-neutral-200 text-xs">
-                        8072719603@upi
+                        6382068495@upi
                       </strong>
                     </div>
                     <p>
-                      Verification Desk: <strong className="text-neutral-900 font-bold">+91 80727 19603</strong>
+                      Verification Desk: <strong className="text-neutral-900 font-bold">+91 63820 68495</strong>
                     </p>
                     <p className="text-[9px] text-neutral-400 leading-relaxed pt-0.5">
                       * Source code access, domain assignment, and production environments transfer upon milestone settlement.
@@ -957,7 +984,7 @@ export function AdminInvoicesView({
                         Authenticated Digital Document
                       </p>
                       <p className="text-[8.5px] text-neutral-400">
-                        Creare Mind Studio • GST &amp; Corporate Compliant Billing Desk
+                        Creare Mind Studio • <span className="font-mono font-medium text-neutral-600">https://crearemind.in</span> • GST &amp; Corporate Compliant
                       </p>
                     </div>
                   </div>
@@ -1318,11 +1345,10 @@ export function AdminInvoicesView({
                                   const nextStatus = phase.status === "Paid" ? "Pending" : "Paid";
                                   setFormPhases(prev => prev.map(p => p.id === phase.id ? { ...p, status: nextStatus } : p));
                                 }}
-                                className={`w-full py-1 text-[10px] font-bold rounded-md transition-colors cursor-pointer ${
-                                  phase.status === "Paid"
+                                className={`w-full py-1 text-[10px] font-bold rounded-md transition-colors cursor-pointer ${phase.status === "Paid"
                                     ? "bg-emerald-600 text-white"
                                     : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                }`}
+                                  }`}
                               >
                                 {phase.status === "Paid" ? "✓ Paid" : "Pending"}
                               </button>

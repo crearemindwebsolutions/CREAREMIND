@@ -80,13 +80,13 @@ export function InternHelpView({ profile }: InternHelpViewProps) {
               <span>gowthamandharshan4@gmail.com</span>
             </a>
             <a
-              href="https://wa.me/918072719603"
+              href="https://wa.me/916382068495"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2 hover:text-emerald-800 transition-colors font-medium text-emerald-700"
             >
               <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Direct WhatsApp Desk: +91 80727 19603</span>
+              <span>Direct WhatsApp Desk: +91 63820 68495</span>
             </a>
           </div>
         </div>

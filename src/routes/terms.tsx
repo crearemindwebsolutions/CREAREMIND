@@ -139,7 +139,7 @@ function TermsPage() {
             </p>
             <div className="mt-4 rounded-lg border border-ink/15 bg-paper-2 p-5 text-sm">
               <p className="font-medium text-ink">Creare Mind Legal Inquiries</p>
-              <p className="mt-1 text-ink-muted">Phone &amp; WhatsApp: <a href="tel:+918072719603" className="text-ink underline">+91 80727 19603</a></p>
+              <p className="mt-1 text-ink-muted">Phone &amp; WhatsApp: <a href="tel:+916382068495" className="text-ink underline">+91 63820 68495</a></p>
               <p className="mt-0.5 text-ink-muted">Email: <a href="mailto:crearemindwebsolutions@gmail.com" className="text-ink underline">crearemindwebsolutions@gmail.com</a></p>
               <p className="mt-0.5 text-ink-muted">Website: <a href="https://crearemind.in" className="text-ink underline">https://crearemind.in</a></p>
             </div>

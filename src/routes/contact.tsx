@@ -38,7 +38,7 @@ export const Route = createFileRoute("/contact")({
       {
         name: "description",
         content:
-          "Connect with Creare Mind (crearemind.in). Call +91 80727 19603, message on WhatsApp, or email crearemindwebsolutions@gmail.com for custom software, mobile apps, and billing POS systems.",
+          "Connect with Creare Mind (crearemind.in). Call +91 63820 68495, message on WhatsApp, or email crearemindwebsolutions@gmail.com for custom software, mobile apps, and billing POS systems.",
       },
       {
         name: "keywords",
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/contact")({
       { name: "twitter:title", content: "Contact Us — Creare Mind" },
       {
         name: "twitter:description",
-        content: "Call +91 80727 19603 or request a callback to discuss your software project.",
+        content: "Call +91 63820 68495 or request a callback to discuss your software project.",
       },
       { name: "twitter:image", content: DEFAULT_OG_IMAGE },
     ],
@@ -196,7 +196,7 @@ Phone: ${submittedTicket.phone}
 Project: ${submittedTicket.service}
 Looking forward to discussing our project!`
       : `Hello Creare Mind! I would like to discuss a project regarding ${currentServiceObj.label} and get a scope estimate.`;
-    return `https://wa.me/918072719603?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/916382068495?text=${encodeURIComponent(text)}`;
   };
 
   return (
@@ -489,7 +489,7 @@ Looking forward to discussing our project!`
                           id={`${formId}-phone`}
                           type="tel"
                           required
-                          placeholder="e.g. +91 80727 19603"
+                          placeholder="e.g. +91 63820 68495"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           className="h-12 w-full rounded-xl border border-black/15 bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-colors focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900"
@@ -582,11 +582,11 @@ Looking forward to discussing our project!`
                       </div>
                       <div>
                         <p className="font-semibold text-neutral-900">Phone & WhatsApp</p>
-                        <p className="font-mono text-neutral-600">+91 80727 19603</p>
+                        <p className="font-mono text-neutral-600">+91 63820 68495</p>
                       </div>
                     </div>
                     <a
-                      href="https://wa.me/918072719603?text=Hello%20Creare%20Mind,%20I'd%20like%20to%20discuss%20a%20project."
+                      href="https://wa.me/916382068495?text=Hello%20Creare%20Mind,%20I'd%20like%20to%20discuss%20a%20project."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="rounded-lg bg-[#25D366] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm hover:brightness-105"
@@ -667,7 +667,7 @@ Looking forward to discussing our project!`
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <a
-              href="https://wa.me/918072719603?text=Hello%20Creare%20Mind,%20I'd%20like%20to%20discuss%20a%20project."
+              href="https://wa.me/916382068495?text=Hello%20Creare%20Mind,%20I'd%20like%20to%20discuss%20a%20project."
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-8 py-3.5 text-sm font-semibold uppercase tracking-wider text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
@@ -677,11 +677,11 @@ Looking forward to discussing our project!`
             </a>
 
             <a
-              href="tel:+918072719603"
+              href="tel:+916382068495"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 bg-white/10 px-8 py-3.5 text-sm font-semibold uppercase tracking-wider text-white backdrop-blur-md transition-all hover:bg-white hover:text-black active:scale-95"
             >
               <Phone className="h-4 w-4" />
-              <span>Call +91 80727 19603</span>
+              <span>Call +91 63820 68495</span>
             </a>
           </div>
         </div>

@@ -202,7 +202,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   branding: {
     name: "CREARE MIND",
     tagline: "Software & Digital Experiences",
-    phone: "+91 80727 19603",
+    phone: "+91 63820 68495",
     email: "crearemindwebsolutions@gmail.com",
     address: "Coimbatore, Tamil Nadu, India",
     workingHours: "Mon – Sat: 9:00 AM – 7:00 PM IST",

@@ -11,7 +11,7 @@ import { useSiteContent } from "@/lib/site-content";
 export function Footer() {
   const { content } = useSiteContent();
   const branding = content.branding || {};
-  const phone = branding.phone || "+91 80727 19603";
+  const phone = branding.phone || "+91 63820 68495";
   const email = branding.email || "crearemindwebsolutions@gmail.com";
   const instagramUrl = branding.instagramUrl || "https://www.instagram.com/crearemind.in";
   const linkedinUrl = branding.linkedinUrl || "https://www.linkedin.com/company/creare-mind/";
