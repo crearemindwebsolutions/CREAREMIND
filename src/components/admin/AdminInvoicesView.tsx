@@ -24,6 +24,9 @@ import {
   Sparkles,
   Calendar,
   ShieldCheck,
+  Phone,
+  Globe,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -700,300 +703,284 @@ export function AdminInvoicesView({
 
             {/* Scrollable Preview Wrapper (Natural flow during print) */}
             <div id="printable-invoice-sheet-container" className="overflow-y-auto flex-1 p-4 sm:p-7 print:p-0 print:m-0 print:overflow-visible print:bg-white print:w-full print:max-w-full">
-              {/* Printable Invoice Sheet - Ultra-Luxury, Minimalist Studio Design (Strictly Fits 1 Page) */}
+              {/* Printable Invoice Sheet - Creare Mind Signature Template (Matching User Template) */}
               <div
                 id="printable-invoice-sheet"
                 style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
-                className="w-full max-w-[720px] mx-auto bg-white text-neutral-900 space-y-3.5 print:max-w-full print:w-full print:m-0 print:p-0 print:bg-white"
+                className="w-full max-w-[760px] mx-auto bg-white text-neutral-900 flex flex-col justify-between min-h-[960px] print:min-h-[275mm] shadow-lg rounded-xl overflow-hidden print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0 print:p-0 print:bg-white"
               >
-                {/* Header: Brand Mark & Studio Details + Invoice Reference */}
-                <div className="flex justify-between items-start border-b border-neutral-900/15 pb-3.5">
-                  <div className="flex items-start gap-3">
-                    <img
-                      src="/logo-black.png"
-                      alt="Creare Mind Logo"
-                      className="h-8 w-auto object-contain shrink-0 mt-0.5"
-                    />
+                {/* Main Content Area */}
+                <div className="p-7 sm:p-10 space-y-6 flex-1">
+                  {/* Top Header: INVOICE (Left) + Creare Mind Logo (Right) */}
+                  <div className="flex justify-between items-center pb-2">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h1 className="text-sm sm:text-base font-black tracking-[0.2em] uppercase text-neutral-950 font-sans">
-                          CREARE MIND
-                        </h1>
-                        <span className="rounded bg-neutral-900 text-white text-[8px] font-bold px-1.5 py-0.5 tracking-wider uppercase">
-                          STUDIO
+                      <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#6B001A] uppercase font-sans">
+                        {previewInvoice.type === "Tax Invoice" ? "INVOICE" : previewInvoice.type}
+                      </h1>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="/logo-black.png"
+                        alt="Creare Mind Logo"
+                        className="h-9 sm:h-10 w-auto object-contain shrink-0"
+                      />
+                      <div className="flex flex-col leading-none">
+                        <span className="text-sm sm:text-base font-black tracking-[0.2em] text-neutral-900 font-sans">
+                          CREARE
+                        </span>
+                        <span className="text-sm sm:text-base font-black tracking-[0.2em] text-[#6B001A] font-sans mt-0.5">
+                          MIND
                         </span>
                       </div>
-                      <p className="text-[8.5px] font-bold uppercase tracking-[0.16em] text-neutral-500 mt-0.5">
-                        Software Engineering &amp; Digital Architecture Studio
-                      </p>
-                      <div className="text-[10px] text-neutral-500 space-y-0.5 mt-1 font-sans">
-                        <p>Tamil Nadu, India • https://crearemind.in • +91 63820 68495</p>
-                        <p>Email: crearemindwebsolutions@gmail.com</p>
+                    </div>
+                  </div>
+
+                  {/* Metadata: No, Billed to, Date Issued, Due Date */}
+                  <div className="grid grid-cols-2 gap-6 pt-3 pb-2 text-xs text-neutral-800 border-t border-neutral-100">
+                    {/* Left Column: No & Billed to */}
+                    <div className="space-y-4">
+                      <div className="flex items-baseline gap-4">
+                        <span className="text-neutral-900 font-semibold w-16 shrink-0">No:</span>
+                        <span className="font-mono font-bold text-neutral-900 text-sm tracking-wider">
+                          {previewInvoice.invoiceNumber}
+                        </span>
+                      </div>
+
+                      <div className="flex items-start gap-4">
+                        <span className="text-neutral-900 font-semibold w-16 shrink-0 pt-0.5">Billed to:</span>
+                        <div className="space-y-1">
+                          <p className="font-bold text-neutral-950 text-sm leading-tight">
+                            {previewInvoice.clientName}
+                          </p>
+                          {previewInvoice.clientCompany && (
+                            <p className="text-neutral-600 font-medium text-xs">
+                              {previewInvoice.clientCompany}
+                            </p>
+                          )}
+                          <p className="text-neutral-600 text-xs font-sans">
+                            {previewInvoice.clientPhone}
+                          </p>
+                          {previewInvoice.clientEmail && (
+                            <p className="text-neutral-600 text-xs font-sans truncate">
+                              {previewInvoice.clientEmail}
+                            </p>
+                          )}
+                          {previewInvoice.clientGst && (
+                            <p className="pt-0.5">
+                              <span className="font-mono text-[9.5px] font-semibold text-neutral-800 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200">
+                                GSTIN: {previewInvoice.clientGst}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Date Issued & Due Date & Status */}
+                    <div className="space-y-3 sm:pl-8">
+                      <div className="flex items-baseline gap-4">
+                        <span className="text-neutral-900 font-semibold w-24 shrink-0">Date Issued:</span>
+                        <span className="font-sans font-medium text-neutral-900">
+                          {previewInvoice.issueDate}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-4">
+                        <span className="text-neutral-900 font-semibold w-24 shrink-0">Due Date:</span>
+                        <span className="font-sans font-medium text-neutral-900">
+                          {previewInvoice.dueDate}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        {previewInvoice.status === "Paid" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                            Settled / Cleared
+                          </span>
+                        ) : previewInvoice.status === "Partial" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                            Partially Settled
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            Awaiting Settlement
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-right flex flex-col items-end">
-                    <span className="inline-block rounded-md bg-neutral-950 text-white px-2.5 py-0.5 font-black text-[8.5px] uppercase tracking-[0.2em]">
-                      {previewInvoice.type}
-                    </span>
-                    <p className="mt-1 font-mono font-bold text-neutral-950 text-sm tracking-wider">
-                      {previewInvoice.invoiceNumber}
-                    </p>
-                    <div className="mt-1 text-[10px] text-neutral-500 space-y-0.5 font-sans">
-                      <p>
-                        <span className="text-neutral-400 font-medium uppercase tracking-wider text-[8.5px]">Issued:</span>{" "}
-                        <strong className="text-neutral-800 font-bold">{previewInvoice.issueDate}</strong>
-                      </p>
-                      <p>
-                        <span className="text-neutral-400 font-medium uppercase tracking-wider text-[8.5px]">Due:</span>{" "}
-                        <strong className="text-neutral-800 font-bold">{previewInvoice.dueDate}</strong>
-                      </p>
-                    </div>
-                    <div className="mt-1">
-                      {previewInvoice.status === "Paid" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/90 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                          Settled / Cleared
-                        </span>
-                      ) : previewInvoice.status === "Partial" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200/90 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider">
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                          Partially Settled
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 text-neutral-800 border border-neutral-300 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                          Awaiting Settlement
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Client & Engagement Specification Cards */}
-                <div className="grid grid-cols-2 gap-3.5 avoid-break-inside">
-                  {/* Billed To */}
-                  <div className="rounded-xl border border-neutral-200/80 bg-neutral-50/50 p-3 space-y-0.5">
-                    <span className="text-[8.5px] font-extrabold uppercase tracking-[0.16em] text-neutral-400 block mb-1">
-                      Billed To / Client Entity
-                    </span>
-                    <p className="text-xs font-black text-neutral-950 tracking-tight leading-snug">
-                      {previewInvoice.clientName}
-                    </p>
-                    {previewInvoice.clientCompany && (
-                      <p className="text-[11px] font-semibold text-neutral-700">
-                        {previewInvoice.clientCompany}
-                      </p>
-                    )}
-                    <p className="text-[10.5px] text-neutral-600 font-sans">
-                      Phone: <span className="font-semibold text-neutral-800">{previewInvoice.clientPhone}</span>
-                    </p>
-                    {previewInvoice.clientEmail && (
-                      <p className="text-[10.5px] text-neutral-600 font-sans truncate">
-                        Email: {previewInvoice.clientEmail}
-                      </p>
-                    )}
-                    {previewInvoice.clientGst && (
-                      <p className="pt-0.5">
-                        <span className="font-mono text-[9px] font-bold text-neutral-800 bg-white px-1.5 py-0.5 rounded border border-neutral-200">
-                          GSTIN: {previewInvoice.clientGst}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Scope & Billing Account */}
-                  <div className="rounded-xl border border-neutral-200/80 bg-neutral-50/50 p-3 space-y-0.5">
-                    <span className="text-[8.5px] font-extrabold uppercase tracking-[0.16em] text-neutral-400 block mb-1">
-                      Engagement Specification
-                    </span>
-                    <p className="text-[10.5px] text-neutral-700">
-                      <span className="text-neutral-400 font-medium">Domain:</span>{" "}
-                      <strong className="text-neutral-900 font-bold">Digital Platforms &amp; Software Production</strong>
-                    </p>
-                    <p className="text-[10.5px] text-neutral-700">
-                      <span className="text-neutral-400 font-medium">Currency:</span>{" "}
-                      <strong className="text-neutral-900 font-bold font-sans">INR (₹) Indian Rupee</strong>
-                    </p>
-                    <p className="text-[10.5px] text-neutral-700">
-                      <span className="text-neutral-400 font-medium">Terms:</span>{" "}
-                      <strong className="text-neutral-900 font-bold">Net 7 Days • Milestone Clearing</strong>
-                    </p>
-                    <p className="text-[10.5px] text-neutral-700">
-                      <span className="text-neutral-400 font-medium">Desk:</span>{" "}
-                      <strong className="text-neutral-900 font-bold">Creare Mind Corporate Billing</strong>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Deliverables & Line Items Table */}
-                <div className="rounded-xl border border-neutral-200/80 overflow-hidden avoid-break-inside">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-neutral-100/80 border-b border-neutral-200/90 text-[8.5px] font-extrabold uppercase tracking-[0.14em] text-neutral-600">
-                      <tr>
-                        <th className="py-2 px-3 text-left">Deliverable / Engineering Scope</th>
-                        <th className="py-2 px-3 text-center">Qty</th>
-                        <th className="py-2 px-3 text-right">Unit Rate</th>
-                        <th className="py-2 px-3 text-right">Net Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100 bg-white">
-                      {previewInvoice.items.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-neutral-50/50">
-                          <td className="py-2 px-3">
-                            <p className="font-bold text-neutral-900 text-xs tracking-tight">{item.description}</p>
-                          </td>
-                          <td className="py-2 px-3 text-center font-sans tabular-nums text-neutral-700 text-xs">
-                            {item.quantity}
-                          </td>
-                          <td className="py-2 px-3 text-right font-sans tabular-nums text-neutral-700 text-xs">
-                            ₹{item.rate.toLocaleString("en-IN")}
-                          </td>
-                          <td className="py-2 px-3 text-right font-sans font-black text-neutral-950 tabular-nums text-xs">
-                            ₹{item.amount.toLocaleString("en-IN")}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Milestone / Phase-Wise Payment Schedule (if enabled) */}
-                {previewInvoice.isPhaseWise && previewInvoice.phases && previewInvoice.phases.length > 0 && (
-                  <div className="rounded-xl border border-neutral-200/80 overflow-hidden avoid-break-inside space-y-0">
-                    <div className="bg-neutral-100/70 px-3 py-1.5 border-b border-neutral-200/90 flex justify-between items-center text-xs">
-                      <span className="font-extrabold text-neutral-900 text-[8.5px] uppercase tracking-[0.14em] flex items-center gap-1.5">
-                        <Layers className="h-3 w-3 text-blue-600" />
-                        Milestone Payment Schedule
-                      </span>
-                      <span className="text-[10px] text-neutral-600 font-semibold font-sans">
-                        {previewInvoice.phases.filter((p) => p.status === "Paid").length} of {previewInvoice.phases.length} Phases Settled
-                      </span>
-                    </div>
+                  {/* Main Deliverables Table */}
+                  <div className="overflow-hidden pt-2 avoid-break-inside">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-neutral-50 border-b border-neutral-200 text-[8px] uppercase text-neutral-500 font-extrabold tracking-wider">
-                        <tr>
-                          <th className="py-1 px-3">#</th>
-                          <th className="py-1 px-3">Milestone Deliverable</th>
-                          <th className="py-1 px-3">Target Timeline</th>
-                          <th className="py-1 px-3 text-right">Share (%)</th>
-                          <th className="py-1 px-3 text-right">Amount</th>
-                          <th className="py-1 px-3 text-center">Status</th>
+                      <thead>
+                        <tr className="bg-[#6B001A] text-white">
+                          <th className="py-2.5 px-4 text-left font-bold uppercase tracking-wider text-[11px]">
+                            Description
+                          </th>
+                          <th className="py-2.5 px-4 text-right font-bold uppercase tracking-wider text-[11px]">
+                            Rate
+                          </th>
+                          <th className="py-2.5 px-4 text-center font-bold uppercase tracking-wider text-[11px]">
+                            Quantity
+                          </th>
+                          <th className="py-2.5 px-4 text-right font-bold uppercase tracking-wider text-[11px]">
+                            Amount
+                          </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-neutral-100 bg-white">
-                        {previewInvoice.phases.map((phase, idx) => (
-                          <tr key={phase.id} className={phase.status === "Paid" ? "bg-emerald-50/20" : ""}>
-                            <td className="py-1 px-3 font-mono font-bold text-neutral-400 text-[10px]">{idx + 1}</td>
-                            <td className="py-1 px-3 font-semibold text-neutral-900 text-[11px]">{phase.name}</td>
-                            <td className="py-1 px-3 text-neutral-500 text-[10px] font-sans">{phase.dueDate || "On Milestone"}</td>
-                            <td className="py-1 px-3 text-right text-neutral-600 font-sans tabular-nums text-[11px]">{phase.percentage}%</td>
-                            <td className="py-1 px-3 text-right font-black text-neutral-950 font-sans tabular-nums text-[11px]">
-                              ₹{phase.amount.toLocaleString("en-IN")}
+                      <tbody className="divide-y divide-neutral-200 bg-white">
+                        {previewInvoice.items.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-neutral-50/50">
+                            <td className="py-3 px-4 font-medium text-neutral-800 text-xs">
+                              {item.description}
                             </td>
-                            <td className="py-1 px-3 text-center">
-                              <span
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-extrabold tracking-wider ${phase.status === "Paid"
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : "bg-neutral-100 text-neutral-700"
-                                  }`}
-                              >
-                                {phase.status === "Paid" ? "✓ SETTLED" : "PENDING"}
-                              </span>
+                            <td className="py-3 px-4 text-right font-sans tabular-nums text-neutral-700 text-xs">
+                              ₹{item.rate.toLocaleString("en-IN")}
+                            </td>
+                            <td className="py-2.5 px-4 text-center font-sans tabular-nums text-neutral-700 text-xs">
+                              {item.quantity}
+                            </td>
+                            <td className="py-2.5 px-4 text-right font-sans font-medium text-neutral-900 tabular-nums text-xs">
+                              ₹{item.amount.toLocaleString("en-IN")}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                )}
 
-                {/* Settlement Channel & Financial Totals Breakdown */}
-                <div className="grid grid-cols-2 gap-3.5 items-start avoid-break-inside">
-                  {/* Settlement Instructions */}
-                  <div className="rounded-xl border border-neutral-200/80 bg-neutral-50/50 p-3 space-y-1 text-[10px] text-neutral-600">
-                    <span className="text-[8.5px] font-extrabold uppercase tracking-[0.16em] text-neutral-400 block">
-                      Official Settlement Channel
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-neutral-500 font-medium">Instant UPI:</span>
-                      <strong className="font-mono font-bold text-neutral-950 bg-white px-1.5 py-0.5 rounded border border-neutral-200 text-xs">
-                        6382068495@upi
-                      </strong>
+                    {/* Financial Totals Breakdown */}
+                    <div className="pt-3 flex justify-end">
+                      <div className="w-full max-w-xs space-y-1.5 text-xs">
+                        <div className="flex justify-between py-1 text-neutral-700 font-medium px-4">
+                          <span>Sub-Total</span>
+                          <span className="font-sans tabular-nums text-neutral-900 font-semibold">
+                            ₹{previewInvoice.subtotal.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        {previewInvoice.gstPercent > 0 && (
+                          <div className="flex justify-between py-1 text-neutral-700 font-medium px-4">
+                            <span>Tax ({previewInvoice.gstPercent}% GST)</span>
+                            <span className="font-sans tabular-nums text-neutral-900 font-semibold">
+                              ₹{previewInvoice.gstAmount.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        )}
+                        <div className="border-t-2 border-b-2 border-neutral-900 py-2.5 my-2 flex justify-between items-baseline px-4">
+                          <span className="font-black text-neutral-950 uppercase tracking-widest text-sm">
+                            TOTAL
+                          </span>
+                          <span className="font-black text-neutral-950 font-sans tabular-nums text-base sm:text-lg">
+                            ₹{previewInvoice.total.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <p>
-                      Verification Desk: <strong className="text-neutral-900 font-bold">+91 63820 68495</strong>
-                    </p>
-                    <p className="text-[9px] text-neutral-400 leading-relaxed pt-0.5">
-                      * Source code access, domain assignment, and production environments transfer upon milestone settlement.
-                    </p>
                   </div>
 
-                  {/* Totals Summary */}
-                  <div className="rounded-xl border border-neutral-200/80 bg-neutral-50/50 p-3 space-y-1.5">
-                    <div className="flex justify-between text-xs text-neutral-600">
-                      <span>Subtotal (Net):</span>
-                      <span className="font-sans font-bold tabular-nums text-neutral-900">
-                        ₹{previewInvoice.subtotal.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    {previewInvoice.gstPercent > 0 && (
-                      <div className="flex justify-between text-xs text-neutral-600">
-                        <span>GST ({previewInvoice.gstPercent}%):</span>
-                        <span className="font-sans font-bold tabular-nums text-neutral-900">
-                          ₹{previewInvoice.gstAmount.toLocaleString("en-IN")}
+                  {/* Milestone Payment Schedule (if phase-wise) */}
+                  {previewInvoice.isPhaseWise && previewInvoice.phases && previewInvoice.phases.length > 0 && (
+                    <div className="overflow-hidden pt-1 avoid-break-inside space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-[#6B001A] text-xs uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5 text-[#6B001A]" />
+                          Milestone Payment Schedule
+                        </span>
+                        <span className="text-[11px] text-neutral-600 font-medium font-sans">
+                          {previewInvoice.phases.filter((p) => p.status === "Paid").length} of {previewInvoice.phases.length} Phases Settled
                         </span>
                       </div>
-                    )}
-                    <div className="flex justify-between items-baseline border-t border-neutral-900/15 pt-1.5">
-                      <span className="text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-neutral-900">
-                        Total Document Value:
-                      </span>
-                      <span className="text-base sm:text-lg font-black text-neutral-950 font-sans tabular-nums tracking-tight">
-                        ₹{previewInvoice.total.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    {previewInvoice.isPhaseWise && previewInvoice.phases && previewInvoice.phases.length > 0 && (
-                      <div className="border-t border-neutral-200/80 pt-1.5 flex justify-between items-center text-[10px]">
-                        <span className="text-neutral-500 font-medium">
-                          Realized:{" "}
-                          <strong className="text-emerald-700 font-bold font-sans tabular-nums">
-                            ₹{getInvoicePaidAmount(previewInvoice).toLocaleString("en-IN")}
-                          </strong>
+                      <table className="w-full text-left text-xs border border-neutral-200">
+                        <thead>
+                          <tr className="bg-neutral-100 border-b border-neutral-200 text-neutral-700 text-[10px] font-bold uppercase tracking-wider">
+                            <th className="py-1.5 px-3">#</th>
+                            <th className="py-1.5 px-3">Milestone Deliverable</th>
+                            <th className="py-1.5 px-3">Target Timeline</th>
+                            <th className="py-1.5 px-3 text-right">Share (%)</th>
+                            <th className="py-1.5 px-3 text-right">Amount</th>
+                            <th className="py-1.5 px-3 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-200 bg-white">
+                          {previewInvoice.phases.map((phase, idx) => (
+                            <tr key={phase.id} className={phase.status === "Paid" ? "bg-emerald-50/20" : ""}>
+                              <td className="py-1.5 px-3 font-mono font-bold text-neutral-400 text-[10px]">{idx + 1}</td>
+                              <td className="py-1.5 px-3 font-semibold text-neutral-900 text-xs">{phase.name}</td>
+                              <td className="py-1.5 px-3 text-neutral-500 text-xs font-sans">{phase.dueDate || "On Milestone"}</td>
+                              <td className="py-1.5 px-3 text-right text-neutral-600 font-sans tabular-nums text-xs">{phase.percentage}%</td>
+                              <td className="py-1.5 px-3 text-right font-bold text-neutral-950 font-sans tabular-nums text-xs">
+                                ₹{phase.amount.toLocaleString("en-IN")}
+                              </td>
+                              <td className="py-1.5 px-3 text-center">
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8.5px] font-bold tracking-wider ${
+                                    phase.status === "Paid"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : "bg-neutral-100 text-neutral-700"
+                                  }`}
+                                >
+                                  {phase.status === "Paid" ? "✓ SETTLED" : "PENDING"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="pt-1 flex justify-between items-center text-[11px] px-1 text-neutral-600">
+                        <span>
+                          Realized Inflow: <strong className="text-emerald-700 font-bold font-sans">₹{getInvoicePaidAmount(previewInvoice).toLocaleString("en-IN")}</strong>
                         </span>
-                        <span className="text-neutral-500 font-medium">
-                          Balance:{" "}
-                          <strong className="text-neutral-900 font-bold font-sans tabular-nums">
-                            ₹{Math.max(0, previewInvoice.total - getInvoicePaidAmount(previewInvoice)).toLocaleString("en-IN")}
-                          </strong>
+                        <span>
+                          Balance Due: <strong className="text-neutral-950 font-bold font-sans">₹{Math.max(0, previewInvoice.total - getInvoicePaidAmount(previewInvoice)).toLocaleString("en-IN")}</strong>
                         </span>
                       </div>
-                    )}
+                    </div>
+                  )}
+
+                  {/* Bottom Columns: PAYABLE TO & NOTES */}
+                  <div className="grid grid-cols-2 gap-8 pt-4 pb-2 text-xs avoid-break-inside border-t border-neutral-100">
+                    {/* Payable To */}
+                    <div className="space-y-1.5">
+                      <h3 className="font-black uppercase tracking-wider text-neutral-950 text-xs">
+                        PAYABLE TO:
+                      </h3>
+                      <p className="font-bold text-neutral-900 text-sm">
+                        Creare Mind Studio
+                      </p>
+                      <div className="space-y-0.5 text-neutral-700 text-xs font-sans">
+                        <p>Instant UPI: <strong className="font-mono font-bold text-neutral-950">6382068495@upi</strong></p>
+                        <p>Verification Desk: <strong className="font-bold text-neutral-950">+91 63820 68495</strong></p>
+                        <p className="text-neutral-500 text-[11px] pt-0.5">Corporate &amp; GST Compliant Digital Architecture Studio</p>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-1.5">
+                      <h3 className="font-black uppercase tracking-wider text-neutral-950 text-xs">
+                        NOTES:
+                      </h3>
+                      <p className="text-neutral-600 text-xs leading-relaxed font-sans">
+                        {previewInvoice.notes || "Thank you for partnering with Creare Mind. Deliverables, source code access, domain assignment, and production environments transfer upon milestone settlement."}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Official Verification Seal & Desk Sign-Off */}
-                <div className="border-t border-neutral-200/80 pt-2.5 flex items-center justify-between text-[10px] avoid-break-inside">
+                {/* Maroon Full-Width Signature Footer Bar */}
+                <div className="bg-[#6B001A] text-white py-3 px-6 sm:px-10 flex flex-wrap items-center justify-between text-xs font-medium tracking-wide shrink-0 avoid-break-inside">
                   <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full border border-neutral-300 flex items-center justify-center bg-white text-neutral-800 shrink-0">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="font-extrabold uppercase tracking-[0.14em] text-neutral-900 text-[8px]">
-                        Authenticated Digital Document
-                      </p>
-                      <p className="text-[8.5px] text-neutral-400">
-                        Creare Mind Studio • <span className="font-mono font-medium text-neutral-600">https://crearemind.in</span> • GST &amp; Corporate Compliant
-                      </p>
-                    </div>
+                    <Phone className="h-3.5 w-3.5 shrink-0 text-white" />
+                    <span>+91 63820 68495</span>
                   </div>
-
-                  <div className="text-right">
-                    <p className="font-extrabold uppercase tracking-[0.16em] text-neutral-900 text-[8px]">
-                      CREARE MIND EXECUTIVE DESK
-                    </p>
-                    <p className="text-[8.5px] text-neutral-400">Authorized Digital Signatory</p>
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 shrink-0 text-white" />
+                    <span>www.crearemind.in</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-3.5 w-3.5 shrink-0 text-white" />
+                    <span>support@crearemind.in</span>
                   </div>
                 </div>
               </div>
