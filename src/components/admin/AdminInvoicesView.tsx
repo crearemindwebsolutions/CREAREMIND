@@ -698,15 +698,15 @@ export function AdminInvoicesView({
             </div>
 
             {/* Scrollable Preview Wrapper (Natural flow during print) */}
-            <div id="printable-invoice-sheet-container" className="overflow-y-auto flex-1 p-4 sm:p-7 print:p-0 print:m-0 print:overflow-visible print:bg-white print:w-full print:max-w-full">
+            <div id="printable-invoice-sheet-container" className="overflow-y-auto flex-1 p-4 sm:p-6 bg-neutral-100/70 print:p-0 print:m-0 print:overflow-visible print:bg-white print:w-full print:max-w-full">
               {/* Printable Invoice Sheet - Creare Mind Signature Template (Matching User Template) */}
               <div
                 id="printable-invoice-sheet"
                 style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
-                className="w-full max-w-[760px] mx-auto bg-white text-neutral-900 flex flex-col justify-between min-h-[960px] print:min-h-[275mm] shadow-lg rounded-xl overflow-hidden print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0 print:p-0 print:bg-white"
+                className="w-full max-w-[760px] mx-auto bg-white text-neutral-900 flex flex-col shadow-lg rounded-xl overflow-hidden print:shadow-none print:rounded-none print:max-w-full print:w-full print:m-0 print:p-0 print:bg-white"
               >
                 {/* Main Content Area */}
-                <div className="p-7 sm:p-10 space-y-6 flex-1">
+                <div className="p-7 sm:p-9 space-y-5">
                   {/* Top Header: INVOICE (Left) + Creare Mind Logo (Right) */}
                   <div className="flex justify-between items-center pb-2">
                     <div>
