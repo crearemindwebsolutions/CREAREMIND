@@ -101,7 +101,7 @@ export function AdminInvoicesView({
           } catch (e) {
             console.debug("replaceState print fallback", e);
           }
-          document.title = `Creare Mind Studio — Tax Invoice ${previewInvoice.invoiceNumber}`;
+          document.title = "";
         }
       };
       const handleAfterPrint = () => {
@@ -155,7 +155,7 @@ export function AdminInvoicesView({
       } catch (e) {
         console.debug("replaceState print fallback", e);
       }
-      document.title = `Creare Mind Studio — Tax Invoice ${previewInvoice.invoiceNumber}`;
+      document.title = "";
     }
     window.print();
     setTimeout(() => {
@@ -661,13 +661,9 @@ export function AdminInvoicesView({
         >
           <div className="relative w-full max-w-3xl rounded-2xl border border-neutral-200/90 bg-white text-neutral-900 shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col print:!border-none print:!shadow-none print:!rounded-none print:!max-h-none print:!m-0 print:!p-0 print:!w-full print:!max-w-full print:!bg-white print:!overflow-visible">
             {/* Modal Controls Bar (Hidden on Print) */}
-            <div className="no-print shrink-0 flex items-center justify-between px-5 sm:px-6 py-3.5 border-b border-neutral-200 bg-neutral-50/90">
+            <div className="no-print shrink-0 flex items-center justify-between px-5 sm:px-6 py-3 border-b border-neutral-200 bg-neutral-50/90">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider">
-                  Document Preview
-                </span>
-                <span className="text-[11px] font-mono font-bold text-neutral-900 bg-white px-2 py-0.5 rounded border border-neutral-200">
+                <span className="text-xs font-mono font-bold text-neutral-900 bg-white px-2.5 py-1 rounded-md border border-neutral-200 shadow-2xs">
                   {previewInvoice.invoiceNumber}
                 </span>
               </div>
@@ -685,7 +681,7 @@ export function AdminInvoicesView({
                   type="button"
                   onClick={handlePrintInvoice}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-950 text-white px-3.5 py-1.5 text-xs font-semibold shadow-xs hover:bg-neutral-800 transition-all cursor-pointer"
-                  title="Print or Save as PDF (Single-Page A4 Guarantee)"
+                  title="Print or Save as PDF"
                 >
                   <Printer className="h-3.5 w-3.5" />
                   <span>Print / Save PDF</span>
@@ -714,8 +710,8 @@ export function AdminInvoicesView({
                   {/* Top Header: INVOICE (Left) + Creare Mind Logo (Right) */}
                   <div className="flex justify-between items-center pb-2">
                     <div>
-                      <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#6B001A] uppercase font-sans">
-                        {previewInvoice.type === "Tax Invoice" ? "INVOICE" : previewInvoice.type}
+                      <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-[#6B001A] uppercase font-sans">
+                        INVOICE
                       </h1>
                     </div>
 
@@ -777,7 +773,7 @@ export function AdminInvoicesView({
                       </div>
                     </div>
 
-                    {/* Right Column: Date Issued & Due Date & Status */}
+                    {/* Right Column: Date Issued & Due Date */}
                     <div className="space-y-3 sm:pl-8">
                       <div className="flex items-baseline gap-4">
                         <span className="text-neutral-900 font-semibold w-24 shrink-0">Date Issued:</span>
@@ -790,24 +786,6 @@ export function AdminInvoicesView({
                         <span className="font-sans font-medium text-neutral-900">
                           {previewInvoice.dueDate}
                         </span>
-                      </div>
-                      <div className="flex items-center gap-2 pt-1">
-                        {previewInvoice.status === "Paid" ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                            Settled / Cleared
-                          </span>
-                        ) : previewInvoice.status === "Partial" ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                            <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                            Partially Settled
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                            Awaiting Settlement
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -880,45 +858,60 @@ export function AdminInvoicesView({
                     </div>
                   </div>
 
-                  {/* Milestone Payment Schedule (if phase-wise) */}
+                  {/* Milestone Payment Schedule (Matching Template Design with Solid Maroon Header) */}
                   {previewInvoice.isPhaseWise && previewInvoice.phases && previewInvoice.phases.length > 0 && (
-                    <div className="overflow-hidden pt-1 avoid-break-inside space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-[#6B001A] text-xs uppercase tracking-wider flex items-center gap-1.5">
-                          <Layers className="h-3.5 w-3.5 text-[#6B001A]" />
+                    <div className="overflow-hidden pt-3 avoid-break-inside space-y-2">
+                      <div className="flex justify-between items-center px-1">
+                        <h3 className="font-black text-[#6B001A] text-xs uppercase tracking-wider font-sans">
                           Milestone Payment Schedule
-                        </span>
+                        </h3>
                         <span className="text-[11px] text-neutral-600 font-medium font-sans">
                           {previewInvoice.phases.filter((p) => p.status === "Paid").length} of {previewInvoice.phases.length} Phases Settled
                         </span>
                       </div>
-                      <table className="w-full text-left text-xs border border-neutral-200">
+
+                      <table className="w-full text-left text-xs">
                         <thead>
-                          <tr className="bg-neutral-100 border-b border-neutral-200 text-neutral-700 text-[10px] font-bold uppercase tracking-wider">
-                            <th className="py-1.5 px-3">#</th>
-                            <th className="py-1.5 px-3">Milestone Deliverable</th>
-                            <th className="py-1.5 px-3">Target Timeline</th>
-                            <th className="py-1.5 px-3 text-right">Share (%)</th>
-                            <th className="py-1.5 px-3 text-right">Amount</th>
-                            <th className="py-1.5 px-3 text-center">Status</th>
+                          <tr className="bg-[#6B001A] text-white">
+                            <th className="py-2.5 px-4 text-left font-bold uppercase tracking-wider text-[11px]">
+                              Milestone Deliverable
+                            </th>
+                            <th className="py-2.5 px-4 text-left font-bold uppercase tracking-wider text-[11px]">
+                              Target Timeline
+                            </th>
+                            <th className="py-2.5 px-4 text-right font-bold uppercase tracking-wider text-[11px]">
+                              Share (%)
+                            </th>
+                            <th className="py-2.5 px-4 text-right font-bold uppercase tracking-wider text-[11px]">
+                              Amount
+                            </th>
+                            <th className="py-2.5 px-4 text-center font-bold uppercase tracking-wider text-[11px]">
+                              Status
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-200 bg-white">
                           {previewInvoice.phases.map((phase, idx) => (
-                            <tr key={phase.id} className={phase.status === "Paid" ? "bg-emerald-50/20" : ""}>
-                              <td className="py-1.5 px-3 font-mono font-bold text-neutral-400 text-[10px]">{idx + 1}</td>
-                              <td className="py-1.5 px-3 font-semibold text-neutral-900 text-xs">{phase.name}</td>
-                              <td className="py-1.5 px-3 text-neutral-500 text-xs font-sans">{phase.dueDate || "On Milestone"}</td>
-                              <td className="py-1.5 px-3 text-right text-neutral-600 font-sans tabular-nums text-xs">{phase.percentage}%</td>
-                              <td className="py-1.5 px-3 text-right font-bold text-neutral-950 font-sans tabular-nums text-xs">
+                            <tr key={phase.id} className="hover:bg-neutral-50/50">
+                              <td className="py-2.5 px-4 font-semibold text-neutral-900 text-xs">
+                                <span className="text-neutral-400 font-mono text-[10px] mr-1.5">{idx + 1}.</span>
+                                {phase.name}
+                              </td>
+                              <td className="py-2.5 px-4 text-neutral-600 text-xs font-sans">
+                                {phase.dueDate || "On Milestone"}
+                              </td>
+                              <td className="py-2.5 px-4 text-right text-neutral-700 font-sans tabular-nums text-xs">
+                                {phase.percentage}%
+                              </td>
+                              <td className="py-2.5 px-4 text-right font-bold text-neutral-950 font-sans tabular-nums text-xs">
                                 ₹{phase.amount.toLocaleString("en-IN")}
                               </td>
-                              <td className="py-1.5 px-3 text-center">
+                              <td className="py-2.5 px-4 text-center">
                                 <span
-                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8.5px] font-bold tracking-wider ${
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-[8.5px] font-bold tracking-wider ${
                                     phase.status === "Paid"
-                                      ? "bg-emerald-100 text-emerald-800"
-                                      : "bg-neutral-100 text-neutral-700"
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                      : "bg-neutral-100 text-neutral-700 border border-neutral-200"
                                   }`}
                                 >
                                   {phase.status === "Paid" ? "✓ SETTLED" : "PENDING"}
@@ -928,12 +921,20 @@ export function AdminInvoicesView({
                           ))}
                         </tbody>
                       </table>
-                      <div className="pt-1 flex justify-between items-center text-[11px] px-1 text-neutral-600">
-                        <span>
-                          Realized Inflow: <strong className="text-emerald-700 font-bold font-sans">₹{getInvoicePaidAmount(previewInvoice).toLocaleString("en-IN")}</strong>
+
+                      {/* Financial Realization Bar */}
+                      <div className="flex justify-between items-center py-2 px-4 bg-neutral-50 border border-neutral-200 rounded-lg text-xs font-sans">
+                        <span className="text-neutral-600 font-medium">
+                          Realized Inflow:{" "}
+                          <strong className="text-emerald-700 font-bold font-sans">
+                            ₹{getInvoicePaidAmount(previewInvoice).toLocaleString("en-IN")}
+                          </strong>
                         </span>
-                        <span>
-                          Balance Due: <strong className="text-neutral-950 font-bold font-sans">₹{Math.max(0, previewInvoice.total - getInvoicePaidAmount(previewInvoice)).toLocaleString("en-IN")}</strong>
+                        <span className="text-neutral-600 font-medium">
+                          Balance Due:{" "}
+                          <strong className="text-neutral-950 font-bold font-sans">
+                            ₹{Math.max(0, previewInvoice.total - getInvoicePaidAmount(previewInvoice)).toLocaleString("en-IN")}
+                          </strong>
                         </span>
                       </div>
                     </div>
