@@ -27,6 +27,7 @@ import {
   Phone,
   Globe,
   Mail,
+  Percent,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -266,6 +267,73 @@ export function AdminInvoicesView({
   const handleRemoveItem = (id: string) => {
     if (formItems.length <= 1) return;
     setFormItems(formItems.filter((i) => i.id !== id));
+  };
+
+  const handleSelectGstOption = (pct: number) => {
+    setFormGstPercent(pct);
+    if (formIsPhaseWise && formPhases.length > 0) {
+      const subtotalVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+      const newTotal = subtotalVal + Math.round((subtotalVal * pct) / 100);
+      setFormPhases((prev) =>
+        prev.map((p) => ({
+          ...p,
+          amount: Math.round(((p.percentage || 0) / 100) * newTotal),
+        }))
+      );
+    }
+  };
+
+  const handleToggleInvoiceTax = (inv: AdminInvoice, targetGst: number) => {
+    const subtotal = inv.subtotal || inv.items.reduce((acc, i) => acc + (i.amount || 0), 0);
+    const gstAmount = Math.round((subtotal * targetGst) / 100);
+    const total = subtotal + gstAmount;
+
+    // Recalculate split
+    const companyAmount = Math.round(total * 0.30);
+    const teamAmount = total - companyAmount;
+    const updatedSplit = inv.split
+      ? {
+        ...inv.split,
+        companyAmount,
+        teamAmount,
+        members: (inv.split.members || []).map((m) => ({
+          ...m,
+          amount: Math.round(((m.percentageOfTeam || 0) / 100) * teamAmount),
+        })),
+        updatedAt: new Date().toISOString(),
+      }
+      : buildDefaultInvoiceSplit(total, inv.clientCompany, inv.clientName, inv.items[0]?.description);
+
+    // Recalculate phases if phase-wise
+    const updatedPhases = inv.phases?.map((p) => {
+      const amt = Math.round(((p.percentage || 0) / 100) * total);
+      return { ...p, amount: amt };
+    });
+
+    const updatedInv: AdminInvoice = {
+      ...inv,
+      gstPercent: targetGst,
+      gstAmount,
+      total,
+      split: updatedSplit,
+      phases: updatedPhases,
+    };
+
+    const nextInvoices = invoices.map((i) => (i.id === inv.id ? updatedInv : i));
+    onInvoicesChange(nextInvoices);
+    saveInvoicesList(nextInvoices);
+    setPreviewInvoice(updatedInv);
+    recordAdminLog(
+      adminEmail,
+      targetGst === 0 ? "Removed Invoice Tax" : "Applied Invoice Tax",
+      "Invoices",
+      `Invoice ${inv.invoiceNumber}: set tax to ${targetGst}% (Total: ₹${total.toLocaleString("en-IN")})`
+    );
+    toast.success(
+      targetGst === 0
+        ? `Tax removed (0% GST). Total: ₹${total.toLocaleString("en-IN")}`
+        : `${targetGst}% GST applied. Total: ₹${total.toLocaleString("en-IN")}`
+    );
   };
 
   const handleSaveInvoice = (e: React.FormEvent) => {
@@ -550,9 +618,20 @@ export function AdminInvoicesView({
                       )}
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">
-                        {inv.type}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">
+                          {inv.type}
+                        </span>
+                        {inv.gstPercent === 0 ? (
+                          <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            No Tax (0%)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-medium bg-neutral-100 text-neutral-600">
+                            +{inv.gstPercent}% GST
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 text-neutral-500 font-sans">
                       {inv.issueDate}
@@ -661,11 +740,42 @@ export function AdminInvoicesView({
         >
           <div className="relative w-full max-w-3xl rounded-2xl border border-neutral-200/90 bg-white text-neutral-900 shadow-2xl overflow-hidden my-auto max-h-[96vh] flex flex-col print:!border-none print:!shadow-none print:!rounded-none print:!max-h-none print:!m-0 print:!p-0 print:!w-full print:!max-w-full print:!bg-white print:!overflow-visible">
             {/* Modal Controls Bar (Hidden on Print) */}
-            <div className="no-print shrink-0 flex items-center justify-between px-5 sm:px-6 py-3 border-b border-neutral-200 bg-neutral-50/90">
-              <div className="flex items-center gap-2">
+            <div className="no-print shrink-0 flex flex-wrap items-center justify-between gap-2 px-5 sm:px-6 py-3 border-b border-neutral-200 bg-neutral-50/90">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-mono font-bold text-neutral-900 bg-white px-2.5 py-1 rounded-md border border-neutral-200 shadow-2xs">
                   {previewInvoice.invoiceNumber}
                 </span>
+
+                {/* Quick Tax Rate / Removal Options Toggle */}
+                <div className="flex items-center bg-white border border-neutral-200 rounded-lg p-0.5 shadow-2xs text-[11px]">
+                  <span className="px-2 py-0.5 text-neutral-500 font-semibold text-[10px] uppercase tracking-wider hidden sm:inline">
+                    Tax:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleInvoiceTax(previewInvoice, 0)}
+                    className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                      previewInvoice.gstPercent === 0
+                        ? "bg-emerald-600 text-white shadow-2xs"
+                        : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                    }`}
+                    title="Remove Tax (0% GST - Non-GST / Exempt Billing)"
+                  >
+                    No Tax (0%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleInvoiceTax(previewInvoice, 18)}
+                    className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                      previewInvoice.gstPercent === 18
+                        ? "bg-[#6B001A] text-white shadow-2xs"
+                        : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100"
+                    }`}
+                    title="Standard 18% GST Rate"
+                  >
+                    + 18% GST
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -839,11 +949,18 @@ export function AdminInvoicesView({
                               ₹{previewInvoice.subtotal.toLocaleString("en-IN")}
                             </span>
                           </div>
-                          {previewInvoice.gstPercent > 0 && (
+                          {previewInvoice.gstPercent > 0 ? (
                             <div className="flex justify-between py-1 text-neutral-700 font-medium px-4">
                               <span>Tax ({previewInvoice.gstPercent}% GST)</span>
                               <span className="font-sans tabular-nums text-neutral-900 font-semibold">
                                 ₹{previewInvoice.gstAmount.toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between py-1 text-neutral-700 font-medium px-4">
+                              <span>Tax (0% / Exempt)</span>
+                              <span className="font-sans tabular-nums text-emerald-700 font-semibold">
+                                ₹0 (No Tax)
                               </span>
                             </div>
                           )}
@@ -1162,7 +1279,7 @@ export function AdminInvoicesView({
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-neutral-800 block mb-1">Status</label>
                   <select
@@ -1177,17 +1294,6 @@ export function AdminInvoicesView({
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-neutral-800 block mb-1">GST Rate</label>
-                  <select
-                    value={formGstPercent}
-                    onChange={(e) => setFormGstPercent(Number(e.target.value))}
-                    className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-900"
-                  >
-                    <option value={18}>18% GST (Standard)</option>
-                    <option value={0}>0% (Exempt / SEZ / Export)</option>
-                  </select>
-                </div>
-                <div>
                   <label className="font-bold text-neutral-800 block mb-1">Due Date</label>
                   <input
                     type="date"
@@ -1196,6 +1302,158 @@ export function AdminInvoicesView({
                     className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-900"
                   />
                 </div>
+              </div>
+
+              {/* Tax Removal & GST Policy Options */}
+              <div className="rounded-xl border border-neutral-200 bg-neutral-50/80 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Percent className="h-4 w-4 text-[#6B001A]" />
+                    <label className="font-bold text-neutral-900 text-xs">
+                      Tax Policy &amp; GST Options
+                    </label>
+                  </div>
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                      formGstPercent === 0
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                        : "bg-[#6B001A]/10 text-[#6B001A] border border-[#6B001A]/20"
+                    }`}
+                  >
+                    {formGstPercent === 0 ? "Tax Removed (0%)" : `${formGstPercent}% GST Applied`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGstOption(0)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      formGstPercent === 0
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-400/30"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">No Tax</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          formGstPercent === 0 ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-600"
+                        }`}
+                      >
+                        0%
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-neutral-500 mt-0.5">Non-GST / Exempt</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGstOption(18)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      formGstPercent === 18
+                        ? "border-[#6B001A] bg-[#6B001A]/5 text-[#6B001A] ring-2 ring-[#6B001A]/20"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">Standard</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          formGstPercent === 18 ? "bg-[#6B001A] text-white" : "bg-neutral-100 text-neutral-600"
+                        }`}
+                      >
+                        18%
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-neutral-500 mt-0.5">Software &amp; Digital</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGstOption(12)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      formGstPercent === 12
+                        ? "border-neutral-900 bg-neutral-900 text-white ring-2 ring-neutral-400/30"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">Concessional</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          formGstPercent === 12 ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600"
+                        }`}
+                      >
+                        12%
+                      </span>
+                    </div>
+                    <p
+                      className={`text-[10px] mt-0.5 ${
+                        formGstPercent === 12 ? "text-neutral-300" : "text-neutral-500"
+                      }`}
+                    >
+                      Service Rate
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectGstOption(5)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      formGstPercent === 5
+                        ? "border-neutral-900 bg-neutral-900 text-white ring-2 ring-neutral-400/30"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">Special</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                          formGstPercent === 5 ? "bg-neutral-800 text-white" : "bg-neutral-100 text-neutral-600"
+                        }`}
+                      >
+                        5%
+                      </span>
+                    </div>
+                    <p
+                      className={`text-[10px] mt-0.5 ${
+                        formGstPercent === 5 ? "text-neutral-300" : "text-neutral-500"
+                      }`}
+                    >
+                      Lower Tier
+                    </p>
+                  </button>
+                </div>
+
+                {/* Calculation Summary */}
+                {(() => {
+                  const subVal = formItems.reduce((acc, i) => acc + (i.amount || 0), 0);
+                  const gstVal = Math.round((subVal * formGstPercent) / 100);
+                  const totVal = subVal + gstVal;
+                  return (
+                    <div className="bg-white rounded-lg p-2.5 border border-neutral-200 flex flex-wrap items-center justify-between text-xs font-sans gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-neutral-600">
+                          Subtotal: <strong>₹{subVal.toLocaleString("en-IN")}</strong>
+                        </span>
+                        <span className="text-neutral-400">•</span>
+                        <span className="text-neutral-600">
+                          Tax ({formGstPercent}%):{" "}
+                          <strong className={formGstPercent === 0 ? "text-emerald-700 font-bold" : "text-neutral-900 font-bold"}>
+                            {formGstPercent === 0 ? "₹0 (Removed)" : `₹${gstVal.toLocaleString("en-IN")}`}
+                          </strong>
+                        </span>
+                      </div>
+                      <div className="font-black text-neutral-950 font-sans">
+                        Final Total:{" "}
+                        <span className="text-sm font-black text-[#6B001A]">
+                          ₹{totVal.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Milestone & Phase-Wise Payments Toggle & Builder */}
